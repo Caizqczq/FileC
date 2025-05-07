@@ -1,0 +1,127 @@
+@model List<DirectoryModel>
+@{
+    ViewData["Title"] = "选择目标文件夹";
+}
+
+<div class="container fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-folder-symlink me-2"></i>选择目标文件夹</h1>
+        <a asp-action="Index" asp-route-directoryId="@ViewBag.CurrentDirectoryId" class="btn btn-outline-secondary">
+            <i class="bi bi-x-circle"></i> 取消
+        </a>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-folder-symlink me-2"></i>选择目标文件夹</h5>
+                </div>
+                <div class="card-body">
+                    <form id="moveForm" asp-action="BatchOperation" method="post">
+                        <input type="hidden" name="Operation" value="move" />
+                        <input type="hidden" name="CurrentDirectoryId" value="@ViewBag.CurrentDirectoryId" />
+                        <input type="hidden" id="targetDirectoryId" name="TargetDirectoryId" value="" />
+                        
+                        <div id="fileIdsContainer"></div>
+                        <div id="directoryIdsContainer"></div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">选择目标文件夹：</label>
+                            
+                            <div class="list-group directory-tree">
+                                <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" 
+                                        data-directory-id="" onclick="selectDirectory(this, '')">
+                                    <span><i class="bi bi-house-door me-2"></i>根目录</span>
+                                    <i class="bi bi-check-circle text-success selected-icon" style="display: none;"></i>
+                                </button>
+                                
+                                @foreach (var directory in Model)
+                                {
+                                    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" 
+                                            data-directory-id="@directory.Id" onclick="selectDirectory(this, '@directory.Id')">
+                                        <span><i class="bi bi-folder me-2"></i>@directory.Name</span>
+                                        <i class="bi bi-check-circle text-success selected-icon" style="display: none;"></i>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <a asp-action="Index" asp-route-directoryId="@ViewBag.CurrentDirectoryId" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i> 取消
+                            </a>
+                            <button type="submit" class="btn btn-primary" id="moveButton" disabled>
+                                <i class="bi bi-folder-symlink me-1"></i> 移动到选定文件夹
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // 从URL获取查询参数
+        function getQueryParams() {
+            const params = new URLSearchParams(window.location.search);
+            const fileIds = params.getAll('fileIds');
+            const directoryIds = params.getAll('directoryIds');
+            return { fileIds, directoryIds };
+        }
+        
+        // 选择目标文件夹
+        function selectDirectory(element, directoryId) {
+            // 移除所有其他选中状态
+            document.querySelectorAll('.directory-tree .selected-icon').forEach(icon => {
+                icon.style.display = 'none';
+            });
+            document.querySelectorAll('.directory-tree .list-group-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // 设置当前选中状态
+            element.classList.add('active');
+            element.querySelector('.selected-icon').style.display = 'inline-block';
+            
+            // 设置目标文件夹ID
+            document.getElementById('targetDirectoryId').value = directoryId;
+            
+            // 启用移动按钮
+            document.getElementById('moveButton').disabled = false;
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const { fileIds, directoryIds } = getQueryParams();
+            const fileIdsContainer = document.getElementById('fileIdsContainer');
+            const directoryIdsContainer = document.getElementById('directoryIdsContainer');
+            
+            // 添加文件ID到表单
+            fileIds.forEach(id => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'FileIds';
+                input.value = id;
+                fileIdsContainer.appendChild(input);
+            });
+            
+            // 添加目录ID到表单
+            directoryIds.forEach(id => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'DirectoryIds';
+                input.value = id;
+                directoryIdsContainer.appendChild(input);
+            });
+            
+            // 如果没有选择任何文件或文件夹，禁用提交按钮
+            if (fileIds.length === 0 && directoryIds.length === 0) {
+                document.getElementById('moveButton').disabled = true;
+                alert('请选择要移动的文件或文件夹');
+                window.location.href = '@Url.Action("Index", new { directoryId = ViewBag.CurrentDirectoryId })';
+            }
+        });
+    </script>
+}
