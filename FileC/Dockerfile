@@ -1,7 +1,7 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
+EXPOSE 5229
+EXPOSE 7244
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
@@ -30,7 +30,7 @@ ENV ConnectionStrings__DefaultConnection="Server=mysql;Port=3306;Database=FileC;
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+    CMD curl -f http://localhost:5229/health || exit 1
 
 # 使用非root用户运行
 USER 1000:1000
