@@ -25,7 +25,7 @@ RUN mkdir -p /app/wwwroot/uploads && \
 
 # 设置环境变量，可以在容器启动时覆盖
 ENV ASPNETCORE_ENVIRONMENT=Production
-ENV ConnectionStrings__DefaultConnection="Server=mysql;Port=3306;Database=FileC;User=root;Password=yourpassword;"
+ENV ConnectionStrings__DefaultConnection="Server=mysql;Port=3306;Database=FileC;User=filec_user;Password=your_secure_password;"
 ENV ASPNETCORE_URLS="http://+:5229"
 
 # 健康检查

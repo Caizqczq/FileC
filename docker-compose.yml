@@ -6,13 +6,14 @@ services:
       context: .
       dockerfile: ./FileC/Dockerfile
     ports:
-      - "5229:5229"  # 只映射HTTP端口
+      - "5229:5229"
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy  # 等待MySQL健康检查通过才启动应用
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Server=mysql;Port=3306;Database=FileC;User=root;Password=123456;
-      - ASPNETCORE_URLS=http://+:5229  # 只使用HTTP
+      - ConnectionStrings__DefaultConnection=Server=mysql;Port=3306;Database=FileC;User=filec_user;Password=your_secure_password;
+      - ASPNETCORE_URLS=http://+:5229
     volumes:
       - filec-uploads:/app/wwwroot/uploads
     restart: unless-stopped
@@ -24,8 +25,8 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=root_password
       - MYSQL_DATABASE=FileC
-      - MYSQL_USER=root
-      - MYSQL_PASSWORD=123456
+      - MYSQL_USER=filec_user        # 修改：使用filec_user而不是root
+      - MYSQL_PASSWORD=your_secure_password
     volumes:
       - mysql-data:/var/lib/mysql
     ports:
@@ -34,6 +35,12 @@ services:
     networks:
       - filec-network
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "filec_user", "-pyour_secure_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 volumes:
   filec-uploads:
