@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  filec-app:
+    build:
+      context: .
+      dockerfile: ./FileC/Dockerfile
+    ports:
+      - "80:8080"
+      - "443:8081"
+    depends_on:
+      - mysql
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=mysql;Port=3306;Database=FileC;User=root;Password=123456;
+    volumes:
+      - filec-uploads:/app/wwwroot/uploads
+    restart: unless-stopped
+    networks:
+      - filec-network
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=FileC
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=123456
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    restart: unless-stopped
+    networks:
+      - filec-network
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+volumes:
+  filec-uploads:
+  mysql-data:
+
+networks:
+  filec-network:
+    driver: bridge
