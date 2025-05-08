@@ -179,18 +179,12 @@ FileC是一个基于ASP.NET Core开发的个人云存储系统，提供文件上
    docker compose up -d
    ```
    
-4. **应用数据库迁移**
-   ```bash
-   # 等待几秒钟，确保MySQL已启动
-   sleep 30
    
+   ```bash
    # 查看应用容器ID
    docker ps
-   
-   # 执行迁移
-   docker exec -it 容器ID dotnet ef database update
    ```
-
+   
 5. **访问应用**
    - 使用浏览器访问 `http://your-server-ip`
    - 应用应该正常运行，可以注册账户并开始使用
