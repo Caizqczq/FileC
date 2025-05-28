@@ -1,342 +1,243 @@
-# FileC - 个人云存储系统
+# CloudFileHub - 云端文件管理系统
 
-FileC是一个基于ASP.NET Core开发的个人云存储系统，提供文件上传、下载、分享和管理功能。系统采用MySQL作为后端数据库，支持用户认证、文件夹管理、批量操作以及文件分享功能。本项目展示了多种现代编程技术和设计模式的应用。
+CloudFileHub 是一个基于 ASP.NET Core 8.0 开发的现代化文件管理系统，集成了阿里云OSS对象存储，提供安全、高效的文件存储和管理解决方案。
 
-## 功能特点
+## 核心功能
 
-- **用户管理**：
-  - 用户注册与登录
-  - 个人资料管理
-  - 存储空间限制（默认1GB）
+### 🔐 用户认证与授权
+- **安全登录**：基于 ASP.NET Core Identity 的用户认证系统
+- **密码安全**：强密码策略，确保账户安全
+- **会话管理**：安全的用户会话控制
 
-- **文件操作**：
-  - 文件上传与下载
-  - 文件重命名
-  - 文件移动
-  - 文件删除
-  - 批量文件操作
+### 📁 文件管理
+- **文件上传**：支持多种文件格式上传到阿里云OSS
+- **文件下载**：快速、安全的文件下载
+- **文件预览**：支持常见文件格式的在线预览
+- **批量操作**：支持批量下载、删除文件
+- **文件搜索**：快速搜索文件名和描述
 
-- **目录管理**：
-  - 创建文件夹
-  - 文件夹重命名
-  - 文件夹移动
-  - 嵌套文件夹支持
+### 🗂️ 目录管理
+- **目录结构**：创建、重命名、删除目录
+- **目录导航**：面包屑导航，轻松浏览文件结构
+- **批量移动**：支持文件和目录的批量移动操作
 
-- **文件分享**：
-  - 生成分享链接
-  - 公开/私有文件设置
-  - 分享链接管理
+### ☁️ 云存储集成
+- **阿里云OSS**：所有文件存储在阿里云OSS对象存储中
+- **高可用性**：99.9%的数据持久性保证
+- **全球访问**：通过CDN加速，全球快速访问
+- **自动备份**：云端自动备份，数据安全可靠
 
-- **搜索功能**：
-  - 按文件名搜索
-  - 按文件描述搜索
+### 📊 存储管理
+- **存储配额**：用户存储空间管理
+- **使用统计**：实时显示存储使用情况
+- **文件统计**：文件数量和大小统计
+
+### 🔗 文件分享
+- **公开分享**：生成分享链接，方便文件共享
+- **访问控制**：灵活的文件访问权限设置
+- **分享管理**：管理已分享的文件链接
 
 ## 技术栈
 
-- **后端**：
-  - ASP.NET Core 8.0
-  - Entity Framework Core
-  - ASP.NET Core Identity（用户认证）
-  - MySQL数据库
+### 后端技术
+- **框架**：ASP.NET Core 8.0
+- **数据库**：MySQL 8.0 with Entity Framework Core
+- **认证**：ASP.NET Core Identity
+- **对象存储**：阿里云OSS SDK
+- **ORM**：Entity Framework Core with Pomelo MySQL Provider
 
-- **前端**：
-  - Razor视图
-  - Bootstrap 5
-  - jQuery
-  - 响应式设计
+### 前端技术
+- **UI框架**：Bootstrap 5
+- **JavaScript**：原生ES6+
+- **图标**：Bootstrap Icons
+- **响应式设计**：移动端友好的响应式布局
 
-## 系统要求
+### 基础设施
+- **容器化**：Docker & Docker Compose
+- **数据库管理**：phpMyAdmin
+- **云存储**：阿里云OSS对象存储
+- **反向代理**：可配合Nginx使用
 
-- .NET 8.0 SDK 或更高版本
-- MySQL 8.0 或更高版本
-- 支持ASP.NET Core的服务器环境（IIS, Nginx, Apache等）
+## 快速开始
 
-## 安装与配置
+### 前置要求
+- .NET 8.0 SDK
+- MySQL 8.0
+- Docker & Docker Compose（可选）
+- 阿里云OSS存储桶
 
-1. **克隆项目**：
+### 本地开发
+1. **克隆项目**
+   ```bash
+   git clone <repository-url>
+   cd CloudFileHub
    ```
-   git clone https://your-repository/FileC.git
-   cd FileC
-   ```
 
-2. **配置数据库连接**：
-   打开`appsettings.json`文件，修改数据库连接字符串：
+2. **配置数据库连接**
+   编辑 `CloudFileHub/appsettings.json`：
    ```json
-   "ConnectionStrings": {
-     "DefaultConnection": "Server=localhost;Port=3306;Database=FileC;User=your_username;Password=your_password;"
+   {
+     "ConnectionStrings": {
+       "DefaultConnection": "Server=localhost;Port=3306;Database=CloudFileHub;User=root;Password=your_password;"
+     }
    }
    ```
 
-3. **应用数据库迁移**：
+3. **配置阿里云OSS**
+   在 `CloudFileHub/appsettings.json` 中配置OSS参数：
+   ```json
+   {
+     "AliyunOSS": {
+       "AccessKeyId": "您的AccessKey ID",
+       "AccessKeySecret": "您的AccessKey Secret",
+       "BucketName": "您的存储桶名称",
+       "Endpoint": "oss-cn-hangzhou.aliyuncs.com",
+       "Region": "cn-hangzhou"
+     }
+   }
    ```
+
+4. **运行数据库迁移**
+   ```bash
+   cd CloudFileHub
    dotnet ef database update
    ```
 
-4. **运行项目**：
-   ```
+5. **启动应用**
+   ```bash
    dotnet run
    ```
 
-5. **访问应用**：
-   打开浏览器，访问 `https://localhost:5001`
-
-## 项目结构
-
-- **Controllers/**：包含应用的控制器
-  - `AccountController.cs`：用户账户管理
-  - `FileController.cs`：文件操作控制
-  - `HomeController.cs`：首页控制
-  - `ShareController.cs`：文件分享功能
-
-- **Models/**：数据模型
-  - `ApplicationUser.cs`：用户模型
-  - `DirectoryModel.cs`：文件夹模型
-  - `FileModel.cs`：文件模型
-  - `FileShareModel.cs`：文件分享模型
-
-- **Services/**：业务逻辑服务
-  - `FileService.cs`：文件处理核心服务
-  - `ShareService.cs`：文件分享服务
-
-- **Views/**：用户界面视图
-  - 按控制器组织的各类视图文件
-
-- **wwwroot/**：静态资源
-  - `css/`：样式文件
-  - `js/`：JavaScript文件
-  - `uploads/`：用户上传的文件存储目录
-
-## 数据库设计
-
-项目采用关系型数据库MySQL，主要包含以下实体：
-
-1. **ApplicationUser**：用户信息表
-   - 继承自IdentityUser
-   - 添加了存储空间管理等扩展字段
-
-2. **FileModel**：文件信息表
-   - 记录文件名、路径、大小、类型等属性
-   - 与用户和目录建立外键关系
-
-3. **DirectoryModel**：目录信息表
-   - 实现目录层级结构
-   - 支持嵌套文件夹管理
-
-4. **FileShareModel**：文件分享表
-   - 记录分享链接、访问权限等信息
-   - 与文件建立外键关系
-
-## 安全考虑
-
-1. **身份验证与授权**：
-   - 基于ASP.NET Core Identity实现用户认证
-   - 基于角色的访问控制
-   - 防止未授权访问
-
-2. **数据保护**：
-   - 密码哈希存储
-   - 敏感数据加密
-   - SQL注入防护
-
-3. **输入验证**：
-   - 服务器端数据验证
-   - 防止XSS攻击
-   - 防止CSRF攻击
-
-4. **文件安全**：
-   - 文件类型验证
-   - 病毒扫描集成
-   - 文件访问控制
-
-## Docker部署
-
-1. **将项目文件上传到服务器**
-   
+### Docker 部署
+1. **使用 Docker Compose 一键部署**
    ```bash
-   git clone https://github.com/Caizqczq/FileC.git
-   cd ~/filec
-   ```
-   
-2. **修改配置**
-   
-   编辑`docker-compose.yml`文件，设置安全的密码:
-   ```bash
-   vim docker-compose.yml
-   ```
-   
-   修改以下部分:
-   ```yaml
-   environment:
-     - MYSQL_ROOT_PASSWORD=设置安全的root密码
-     - MYSQL_PASSWORD=设置安全的用户密码
-     
-   # 确保ConnectionStrings__DefaultConnection中的密码与MYSQL_PASSWORD一致
-   ```
-
-3. **启动容器**
-   
-   ```bash
-   docker compose up -d
-   ```
-   
-   
-   ```bash
-   # 查看应用容器ID
-   docker ps
-   ```
-   
-5. **访问应用**
-   - 使用浏览器访问 `http://your-server-ip`
-   - 应用应该正常运行，可以注册账户并开始使用
-
-### 维护操作
-
-1. **查看日志**
-   ```bash
-   # 应用日志
-   docker logs filec-app
-   
-   # MySQL日志
-   docker logs mysql
-   
-   # 实时日志
-   docker logs -f filec-app
-   ```
-
-2. **备份数据**
-   ```bash
-   # 备份MySQL数据
-   docker exec mysql mysqldump -u root -p"root_password" FileC > backup.sql
-   
-   # 备份上传的文件
-   docker cp filec-app:/app/wwwroot/uploads ./uploads-backup
-   ```
-
-3. **更新应用**
-   ```bash
-   # 拉取最新代码
-   git pull
-   
-   # 重新构建并启动
-   docker-compose down
-   docker-compose build
    docker-compose up -d
    ```
 
-4. **性能监控**
-   ```bash
-   # 查看容器资源使用情况
-   docker stats
-   ```
+2. **访问应用**
+   - 应用地址：http://localhost:5000
+   - 数据库管理：http://localhost:8080 (phpMyAdmin)
 
-### 常见问题排查
+## 项目结构
+```
+CloudFileHub/
+├── CloudFileHub/                   # 主要应用程序
+│   ├── Controllers/                # MVC控制器
+│   ├── Models/                     # 数据模型和视图模型
+│   ├── Views/                      # Razor视图
+│   ├── Services/                   # 业务服务层
+│   ├── Data/                       # 数据访问层
+│   ├── Migrations/                 # 数据库迁移文件
+│   ├── wwwroot/                    # 静态资源
+│   ├── CloudFileHub.csproj        # 项目文件
+│   └── Program.cs                  # 应用程序入口
+├── docker-compose.yml              # Docker编排文件
+├── CloudFileHub.sln               # 解决方案文件
+├── OSS_SETUP_README.md           # OSS配置说明
+└── README.md                      # 项目说明文档
+```
 
-1. **应用无法启动**
-   ```bash
-   # 查看容器状态
-   docker ps -a
-   
-   # 检查应用日志
-   docker logs filec-app
-   ```
+## 配置说明
 
-2. **数据库连接错误**
-   
-   ```bash
-   # 检查MySQL容器是否正常运行
-   docker ps | grep mysql
-   
-   # 检查MySQL日志
-   docker logs mysql
-   
-   # 验证网络连接
-   docker exec filec-app ping mysql
-   ```
-   
-3. **文件上传问题**
-   ```bash
-   # 检查卷权限
-   docker exec filec-app ls -la /app/wwwroot/uploads
-   ```
+### 数据库配置
+系统使用MySQL作为主数据库，支持：
+- 用户信息存储
+- 文件元数据管理
+- 目录结构维护
+- 分享链接管理
 
-4. **容器崩溃自动重启**
-   
-   由于我们已在`docker-compose.yml`中设置了`restart: unless-stopped`，容器会在崩溃后自动重启。但如果频繁崩溃，应检查日志找出根本原因。
+### OSS配置
+详细的OSS配置说明请参考 [OSS_SETUP_README.md](OSS_SETUP_README.md)
 
+### 环境变量
+支持通过环境变量覆盖配置：
+- `ConnectionStrings__DefaultConnection`：数据库连接字符串
+- `AliyunOSS__AccessKeyId`：OSS访问密钥ID
+- `AliyunOSS__AccessKeySecret`：OSS访问密钥Secret
+- `AliyunOSS__BucketName`：OSS存储桶名称
 
+## API文档
 
-## 其他部分
+### 文件操作API
+- `GET /File` - 文件列表页面
+- `POST /File/Upload` - 文件上传
+- `GET /File/Download/{id}` - 文件下载
+- `DELETE /File/Delete/{id}` - 删除文件
 
-- **Controllers/**：包含应用的控制器
-  - `AccountController.cs`：用户账户管理
-  - `FileController.cs`：文件操作控制
-  - `HomeController.cs`：首页控制
-  - `ShareController.cs`：文件分享功能
+### 目录操作API
+- `GET /File/CreateDirectory` - 创建目录页面
+- `POST /File/CreateDirectory` - 创建目录
+- `DELETE /File/DeleteDirectory/{id}` - 删除目录
 
-- **Models/**：数据模型
-  - `ApplicationUser.cs`：用户模型
-  - `DirectoryModel.cs`：文件夹模型
-  - `FileModel.cs`：文件模型
-  - `FileShareModel.cs`：文件分享模型
+### 分享功能API
+- `GET /Share` - 分享管理页面
+- `POST /Share/Create` - 创建分享链接
+- `GET /Share/Public/{shareId}` - 公开访问分享文件
 
-- **Services/**：业务逻辑服务
-  - `FileService.cs`：文件处理核心服务
-  - `ShareService.cs`：文件分享服务
+## 安全特性
 
-- **Views/**：用户界面视图
-  - 按控制器组织的各类视图文件
+### 数据安全
+- **加密传输**：全站HTTPS加密
+- **访问控制**：基于用户的文件访问权限
+- **SQL注入防护**：使用参数化查询防止SQL注入
+- **XSS防护**：输入验证和输出编码
 
-- **wwwroot/**：静态资源
-  - `css/`：样式文件
-  - `js/`：JavaScript文件
-  - `uploads/`：用户上传的文件存储目录
+### 文件安全
+- **病毒扫描**：可集成病毒扫描服务
+- **文件类型限制**：支持配置允许的文件类型
+- **大小限制**：文件大小和总存储空间限制
+- **访问日志**：详细的文件访问日志记录
 
-## 数据库设计
+## 性能优化
 
-项目采用关系型数据库MySQL，主要包含以下实体：
+### 文件处理
+- **异步上传**：异步文件上传处理
+- **断点续传**：支持大文件断点续传
+- **缓存策略**：智能缓存减少重复下载
+- **CDN加速**：结合阿里云CDN实现全球加速
 
-1. **ApplicationUser**：用户信息表
-   - 继承自IdentityUser
-   - 添加了存储空间管理等扩展字段
+### 数据库优化
+- **连接池**：数据库连接池管理
+- **索引优化**：关键字段索引优化
+- **查询优化**：Entity Framework查询优化
 
-2. **FileModel**：文件信息表
-   - 记录文件名、路径、大小、类型等属性
-   - 与用户和目录建立外键关系
+## 监控与维护
 
-3. **DirectoryModel**：目录信息表
-   - 实现目录层级结构
-   - 支持嵌套文件夹管理
+### 日志记录
+- **结构化日志**：使用Serilog记录结构化日志
+- **错误追踪**：详细的错误堆栈追踪
+- **性能监控**：关键操作性能监控
 
-4. **FileShareModel**：文件分享表
-   - 记录分享链接、访问权限等信息
-   - 与文件建立外键关系
+### 健康检查
+- **应用健康检查**：内置健康检查端点
+- **数据库连接检查**：数据库连接状态监控
+- **OSS连接检查**：云存储连接状态监控
 
-## 安全考虑
+## 部署建议
 
-1. **身份验证与授权**：
-   - 基于ASP.NET Core Identity实现用户认证
-   - 基于角色的访问控制
-   - 防止未授权访问
+### 生产环境
+- **负载均衡**：使用Nginx进行负载均衡
+- **数据库**：MySQL主从复制
+- **缓存**：Redis缓存层
+- **监控**：Prometheus + Grafana监控
 
-2. **数据保护**：
-   - 密码哈希存储
-   - 敏感数据加密
-   - SQL注入防护
-
-3. **输入验证**：
-   - 服务器端数据验证
-   - 防止XSS攻击
-   - 防止CSRF攻击
-
-4. **文件安全**：
-   - 文件类型验证
-   - 病毒扫描集成
-   - 文件访问控制
+### 备份策略
+- **数据库备份**：定期数据库备份
+- **OSS备份**：跨区域数据备份
+- **配置备份**：配置文件版本控制
 
 ## 许可证
+本项目采用 MIT 许可证。详情请参阅 [LICENSE](LICENSE) 文件。
 
-[指定适合您项目的许可证]
+## 贡献指南
+欢迎提交Issue和Pull Request来改进这个项目。
 
-## 开发者信息
+## 联系我们
+如有问题或建议，请通过以下方式联系：
+- 提交Issue：[GitHub Issues](链接)
+- 邮件：your-email@example.com
 
-[您的联系信息，如邮箱、网站等]
+---
+
+**CloudFileHub** - 让文件管理更简单，让云存储更安全！
+

@@ -1,51 +1,52 @@
 version: '3.8'
 
 services:
-  filec-app:
+  clouddisk:
     build:
       context: .
-      dockerfile: ./FileC/Dockerfile
+      dockerfile: CloudFileHub/Dockerfile
     ports:
-      - "5229:5229"
+      - "5000:8080"
     depends_on:
-      mysql:
-        condition: service_healthy  # 等待MySQL健康检查通过才启动应用
+      - mysql
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Server=mysql;Port=3306;Database=FileC;User=filec_user;Password=your_secure_password;
-      - ASPNETCORE_URLS=http://+:5229
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=mysql;Port=3306;Database=CloudFileHub;User=root;Password=123456;
     volumes:
-      - filec-uploads:/app/wwwroot/uploads
-    restart: unless-stopped
+      - file_uploads:/app/wwwroot/uploads
     networks:
-      - filec-network
+      - cloudfilehub_network
 
   mysql:
     image: mysql:8.0
     environment:
-      - MYSQL_ROOT_PASSWORD=root_password
-      - MYSQL_DATABASE=FileC
-      - MYSQL_USER=filec_user        # 修改：使用filec_user而不是root
-      - MYSQL_PASSWORD=your_secure_password
-    volumes:
-      - mysql-data:/var/lib/mysql
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: CloudFileHub
     ports:
       - "3306:3306"
-    restart: unless-stopped
+    volumes:
+      - mysql_data:/var/lib/mysql
     networks:
-      - filec-network
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "filec_user", "-pyour_secure_password"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      - cloudfilehub_network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: 123456
+    depends_on:
+      - mysql
+    networks:
+      - cloudfilehub_network
 
 volumes:
-  filec-uploads:
-  mysql-data:
+  mysql_data:
+  file_uploads:
 
 networks:
-  filec-network:
+  cloudfilehub_network:
     driver: bridge
