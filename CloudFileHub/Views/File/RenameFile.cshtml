@@ -1,0 +1,99 @@
+@model FileModel
+@{
+    ViewData["Title"] = "重命名文件";
+}
+
+<div class="container fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>重命名文件</h1>
+        <a asp-action="Index" asp-route-directoryId="@ViewBag.DirectoryId" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> 返回文件列表
+        </a>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-pencil me-2"></i>重命名文件</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="RenameFile" method="post">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <input type="hidden" name="directoryId" value="@ViewBag.DirectoryId" />
+                        
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                        
+                        <div class="mb-3">
+                            <label for="newName" class="form-label">当前文件名</label>
+                            <input type="text" class="form-control" value="@Model.FileName" disabled />
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="newName" class="form-label">新文件名</label>
+                            <input type="text" id="newName" name="newName" class="form-control" value="@Model.FileName" required />
+                            <div class="form-text">请输入新的文件名（不包含路径）</div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="Index" asp-route-directoryId="@ViewBag.DirectoryId" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i> 取消
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-1"></i> 保存更改
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">文件信息</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>文件类型：</span>
+                            <span class="text-muted">@Model.ContentType</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>文件大小：</span>
+                            <span class="text-muted">@(Model.FileSize < 1024 * 1024 ? $"{Model.FileSize / 1024:F1} KB" : $"{Model.FileSize / (1024 * 1024):F1} MB")</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>上传日期：</span>
+                            <span class="text-muted">@Model.UploadDate.ToString("yyyy-MM-dd HH:mm")</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // 自动选择文件名（不包含扩展名）
+        document.addEventListener('DOMContentLoaded', function() {
+            const newNameInput = document.getElementById('newName');
+            if (newNameInput) {
+                const fileName = newNameInput.value;
+                const lastDotIndex = fileName.lastIndexOf('.');
+                
+                if (lastDotIndex > 0) {
+                    // 选择文件名部分（不包含扩展名）
+                    const fileNameWithoutExt = fileName.substring(0, lastDotIndex);
+                    newNameInput.setSelectionRange(0, fileNameWithoutExt.length);
+                } else {
+                    // 如果没有扩展名，选择整个文件名
+                    newNameInput.select();
+                }
+                
+                newNameInput.focus();
+            }
+        });
+    </script>
+}

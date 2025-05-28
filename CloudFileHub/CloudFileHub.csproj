@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+        <RestoreSources>https://api.nuget.org/v3/index.json</RestoreSources>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Content Include="..\.dockerignore">
+        <Link>.dockerignore</Link>
+      </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Aliyun.OSS.SDK.NetCore" Version="2.14.1" />
+      <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.0" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.0" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.0">
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        <PrivateAssets>all</PrivateAssets>
+      </PackageReference>
+      <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="8.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Migrations\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <_ContentIncludedByDefault Remove="wwwroot\uploads\078ddcf6-df5c-4f9b-a6c5-ebb8293ebd9f\c2cda037-cc11-409f-947b-9dbaccfe9e4c_翻译.doc" />
+      <_ContentIncludedByDefault Remove="wwwroot\uploads\078ddcf6-df5c-4f9b-a6c5-ebb8293ebd9f\de2d064a-0bbd-46d6-b3ad-9801afc763c1_教育部学籍在线验证报告_蔡子钦pdf.pdf" />
+      <_ContentIncludedByDefault Remove="wwwroot\uploads\a065ae96-58b4-4836-9b7a-9199e78507aa\11d08720-989c-4246-87bb-b05b77594c48_505e28549bc542eab7b9cde04077771d (1).pdf" />
+      <_ContentIncludedByDefault Remove="wwwroot\uploads\a065ae96-58b4-4836-9b7a-9199e78507aa\b8c39b25-0d2b-4cb7-b8d1-fb407d3256f4_屏幕截图 2025-01-25 112531.png" />
+      <_ContentIncludedByDefault Remove="wwwroot\uploads\d621dd63-1e6d-4acf-9384-df0f04b7e86e\af31c3bd-dc18-4a79-959b-4e5d4adbbdc2_翻译.doc" />
+      <_ContentIncludedByDefault Remove="wwwroot\uploads\d621dd63-1e6d-4acf-9384-df0f04b7e86e\de277e92-d803-43c8-a133-f7dd4fc9dd9c_教育部学籍在线验证报告_蔡子钦pdf (3).pdf" />
+      <_ContentIncludedByDefault Remove="wwwroot\uploads\d621dd63-1e6d-4acf-9384-df0f04b7e86e\f3e1e068-15f1-4a08-8575-ccfe73785d6c_教育部学籍在线验证报告_蔡子钦pdf (1).pdf" />
+      <_ContentIncludedByDefault Remove="wwwroot\uploads\d621dd63-1e6d-4acf-9384-df0f04b7e86e\fc45bfe8-1eca-469d-be42-756dca9b9a65_教育部学籍在线验证报告_蔡子钦pdf.pdf" />
+    </ItemGroup>
+
+</Project>

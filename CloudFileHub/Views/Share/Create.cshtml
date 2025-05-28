@@ -1,0 +1,228 @@
+@{
+    ViewData["Title"] = "创建分享链接";
+}
+
+<div class="container fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-share me-2"></i>创建分享链接</h1>
+        <a asp-controller="File" asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>返回文件列表
+        </a>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-link-45deg me-2"></i>分享文件：@ViewBag.File.FileName</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Create" method="post" id="shareForm">
+                        <input type="hidden" name="fileId" value="@ViewBag.File.Id" />
+                        
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="expiryDate" class="form-label">过期时间</label>
+                                    <input type="datetime-local" id="expiryDate" name="expiryDate" class="form-control" />
+                                    <div class="form-text">留空表示永不过期</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="maxDownloads" class="form-label">最大下载次数</label>
+                                    <input type="number" id="maxDownloads" name="maxDownloads" class="form-control" min="1" />
+                                    <div class="form-text">留空表示不限制下载次数</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <div class="form-check form-switch">
+                                    <input type="checkbox" id="isPasswordProtected" name="isPasswordProtected" class="form-check-input" />
+                                    <label for="isPasswordProtected" class="form-check-label">密码保护</label>
+                                </div>
+                            </div>
+                            <div class="card-body password-section" style="display: none;">
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">设置密码</label>
+                                    <div class="input-group">
+                                        <input type="password" id="password" name="password" class="form-control" />
+                                        <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-secondary" type="button" id="generatePassword">
+                                            生成密码
+                                        </button>
+                                    </div>
+                                    <div class="form-text">密码将用于保护您的分享链接</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-share me-2"></i>创建分享链接
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>文件信息</h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        @if (ViewBag.File.ContentType.StartsWith("image/"))
+                        {
+                            <img src="/@ViewBag.File.FilePath" class="img-thumbnail mb-3" style="max-height: 150px;" alt="@ViewBag.File.FileName" />
+                        }
+                        else if (ViewBag.File.ContentType.Contains("pdf"))
+                        {
+                            <i class="bi bi-file-earmark-pdf-fill display-1 text-danger"></i>
+                        }
+                        else if (ViewBag.File.ContentType.Contains("word") || ViewBag.File.ContentType.Contains("document"))
+                        {
+                            <i class="bi bi-file-earmark-word-fill display-1 text-primary"></i>
+                        }
+                        else if (ViewBag.File.ContentType.Contains("excel") || ViewBag.File.ContentType.Contains("sheet"))
+                        {
+                            <i class="bi bi-file-earmark-excel-fill display-1 text-success"></i>
+                        }
+                        else if (ViewBag.File.ContentType.Contains("powerpoint") || ViewBag.File.ContentType.Contains("presentation"))
+                        {
+                            <i class="bi bi-file-earmark-ppt-fill display-1 text-warning"></i>
+                        }
+                        else
+                        {
+                            <i class="bi bi-file-earmark-fill display-1 text-primary"></i>
+                        }
+                    </div>
+                    
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-file-earmark me-2"></i>文件名</span>
+                            <span class="text-truncate ms-2">@ViewBag.File.FileName</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-tag me-2"></i>类型</span>
+                            <span>@ViewBag.File.ContentType</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-hdd me-2"></i>大小</span>
+                            <span>@(ViewBag.File.FileSize < 1024 * 1024 ? $"{ViewBag.File.FileSize / 1024:F1} KB" : $"{ViewBag.File.FileSize / (1024 * 1024):F1} MB")</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-calendar me-2"></i>上传时间</span>
+                            <span>@ViewBag.File.UploadDate.ToString("yyyy-MM-dd HH:mm")</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-gear me-2"></i>分享选项</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex mb-3">
+                        <div class="feature-icon bg-primary text-white rounded-circle me-3">
+                            <i class="bi bi-calendar-event"></i>
+                        </div>
+                        <div>
+                            <h6>过期时间</h6>
+                            <p class="text-muted small mb-0">设置链接自动失效的时间</p>
+                        </div>
+                    </div>
+                    <div class="d-flex mb-3">
+                        <div class="feature-icon bg-success text-white rounded-circle me-3">
+                            <i class="bi bi-download"></i>
+                        </div>
+                        <div>
+                            <h6>下载限制</h6>
+                            <p class="text-muted small mb-0">限制文件可被下载的次数</p>
+                        </div>
+                    </div>
+                    <div class="d-flex">
+                        <div class="feature-icon bg-danger text-white rounded-circle me-3">
+                            <i class="bi bi-lock"></i>
+                        </div>
+                        <div>
+                            <h6>密码保护</h6>
+                            <p class="text-muted small mb-0">需要密码才能下载文件</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .feature-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+    }
+</style>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(function () {
+            // 密码保护切换
+            $('#isPasswordProtected').change(function () {
+                if ($(this).is(':checked')) {
+                    $('.password-section').slideDown();
+                    $('#password').attr('required', 'required');
+                } else {
+                    $('.password-section').slideUp();
+                    $('#password').removeAttr('required');
+                }
+            });
+            
+            // 显示/隐藏密码
+            $('#togglePassword').click(function() {
+                const passwordInput = $('#password');
+                const icon = $(this).find('i');
+                
+                if (passwordInput.attr('type') === 'password') {
+                    passwordInput.attr('type', 'text');
+                    icon.removeClass('bi-eye').addClass('bi-eye-slash');
+                } else {
+                    passwordInput.attr('type', 'password');
+                    icon.removeClass('bi-eye-slash').addClass('bi-eye');
+                }
+            });
+            
+            // 生成随机密码
+            $('#generatePassword').click(function() {
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$%^&*';
+                let password = '';
+                
+                for (let i = 0; i < 10; i++) {
+                    password += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                
+                $('#password').val(password);
+                $('#password').attr('type', 'text');
+                $('#togglePassword').find('i').removeClass('bi-eye').addClass('bi-eye-slash');
+            });
+            
+            // 设置默认过期时间（7天后）
+            const now = new Date();
+            now.setDate(now.getDate() + 7);
+            const defaultExpiry = now.toISOString().slice(0, 16);
+            $('#expiryDate').val(defaultExpiry);
+        });
+    </script>
+}

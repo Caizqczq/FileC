@@ -1,0 +1,88 @@
+@model DirectoryModel
+@{
+    ViewData["Title"] = "重命名文件夹";
+}
+
+<div class="container fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>重命名文件夹</h1>
+        <a asp-action="Index" asp-route-directoryId="@ViewBag.ParentDirectoryId" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> 返回文件列表
+        </a>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="card-title mb-0"><i class="bi bi-pencil me-2"></i>重命名文件夹</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="RenameDirectory" method="post">
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <input type="hidden" name="parentDirectoryId" value="@ViewBag.ParentDirectoryId" />
+                        
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                        
+                        <div class="mb-3">
+                            <label for="currentName" class="form-label">当前文件夹名称</label>
+                            <input type="text" id="currentName" class="form-control" value="@Model.Name" disabled />
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="newName" class="form-label">新文件夹名称</label>
+                            <input type="text" id="newName" name="newName" class="form-control" value="@Model.Name" required />
+                            <div class="form-text">请输入新的文件夹名称</div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="Index" asp-route-directoryId="@ViewBag.ParentDirectoryId" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i> 取消
+                            </a>
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-check-circle me-1"></i> 保存更改
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">文件夹信息</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>创建日期：</span>
+                            <span class="text-muted">@Model.CreatedDate.ToString("yyyy-MM-dd HH:mm")</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>子文件夹数量：</span>
+                            <span class="text-muted">@Model.Subdirectories.Count</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>文件数量：</span>
+                            <span class="text-muted">@Model.Files.Count</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // 自动选择文件夹名称
+        document.addEventListener('DOMContentLoaded', function() {
+            const newNameInput = document.getElementById('newName');
+            if (newNameInput) {
+                newNameInput.select();
+                newNameInput.focus();
+            }
+        });
+    </script>
+}

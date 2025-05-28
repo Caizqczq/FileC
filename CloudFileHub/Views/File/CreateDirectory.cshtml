@@ -1,0 +1,42 @@
+@{
+    ViewData["Title"] = "创建文件夹";
+}
+
+<div class="container">
+    <h1>创建文件夹</h1>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">创建新文件夹</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="CreateDirectory" method="post">
+                        <input type="hidden" name="parentDirectoryId" value="@ViewBag.ParentDirectoryId" />
+                        
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                        
+                        <div class="mb-3">
+                            <label for="name" class="form-label">文件夹名称</label>
+                            <input type="text" id="name" name="name" class="form-control" required />
+                        </div>
+                        
+                        <div class="mb-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-folder-plus"></i> 创建
+                            </button>
+                            <a asp-action="Index" asp-route-directoryId="@ViewBag.ParentDirectoryId" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> 返回文件列表
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

@@ -1,0 +1,64 @@
+# 构建结果
+bin/
+obj/
+out/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userprefs
+*.sln.docstates
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# 敏感配置文件 - 包含数据库密码和OSS密钥
+appsettings.json
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Staging.json
+
+# 日志文件
+logs/
+*.log
+
+# 运行时文件
+*.pid
+*.tmp
+
+# 依赖包
+node_modules/
+packages/
+
+# IDE 和编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS 生成的文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 上传的文件目录
+wwwroot/uploads/
+
+# Docker 相关
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3 
