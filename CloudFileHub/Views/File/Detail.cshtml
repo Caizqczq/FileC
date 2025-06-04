@@ -1,0 +1,342 @@
+@model CloudFileHub.Models.ViewModels.FileDetailViewModel
+@{
+    ViewData["Title"] = "文件详情 - " + Model.File.FileName;
+}
+
+<div class="container fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a asp-action="Index">文件管理</a></li>
+                <li class="breadcrumb-item active" aria-current="page">文件详情</li>
+            </ol>
+        </nav>
+        <div>
+            <a asp-action="Index" asp-route-directoryId="@Model.File.DirectoryId" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-arrow-left me-2"></i>返回
+            </a>
+            <div class="btn-group" role="group">
+                <a asp-action="Download" asp-route-id="@Model.File.Id" class="btn btn-primary">
+                    <i class="bi bi-download me-2"></i>下载
+                </a>
+                <a asp-controller="Share" asp-action="Create" asp-route-fileId="@Model.File.Id" class="btn btn-success">
+                    <i class="bi bi-share me-2"></i>分享
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 主要内容区域 -->
+        <div class="col-lg-8">
+
+
+            <!-- AI 分析结果 -->
+            @if (Model.AiAnalysis != null)
+            {
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-robot me-2"></i>AI 智能分析
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><i class="bi bi-tag-fill me-2"></i>文档分类</h6>
+                                <span class="badge bg-primary fs-6">@Model.AiAnalysis.Category</span>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="bi bi-graph-up me-2"></i>置信度</h6>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar" role="progressbar" style="width: @((Model.AiAnalysis.Confidence * 100).ToString("F1"))%" aria-valuenow="@(Model.AiAnalysis.Confidence * 100)" aria-valuemin="0" aria-valuemax="100">
+                                        @((Model.AiAnalysis.Confidence * 100).ToString("F1"))%
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <h6><i class="bi bi-file-text me-2"></i>内容摘要</h6>
+                            <p class="text-muted">@Model.AiAnalysis.Summary</p>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(Model.AiAnalysis.Tags))
+                        {
+                            <div class="mt-3">
+                                <h6><i class="bi bi-tags me-2"></i>智能标签</h6>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @try
+                                    {
+                                        var tags = System.Text.Json.JsonSerializer.Deserialize<List<string>>(Model.AiAnalysis.Tags);
+                                        if (tags != null)
+                                        {
+                                            foreach (var tag in tags)
+                                            {
+                                                <span class="badge bg-secondary">@tag</span>
+                                            }
+                                        }
+                                    }
+                                    catch
+                                    {
+                                        // 如果JSON解析失败，尝试按逗号分割
+                                        foreach (var tag in Model.AiAnalysis.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                                        {
+                                            <span class="badge bg-secondary">@tag.Trim()</span>
+                                        }
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(Model.ExtractedContent))
+                        {
+                            <div class="mt-3">
+                                <h6><i class="bi bi-journal-text me-2"></i>提取内容</h6>
+                                <div class="bg-light p-3 rounded">
+                                    <pre class="mb-0 text-wrap">@(Model.ExtractedContent.Length > 500 ? Model.ExtractedContent.Substring(0, 500) + "..." : Model.ExtractedContent)</pre>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <i class="bi bi-clock me-1"></i>分析时间：@Model.AiAnalysis.AnalysisDate.ToString("yyyy-MM-dd HH:mm")
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body text-center">
+                        <i class="bi bi-robot fs-1 text-muted mb-3"></i>
+                        <h5>AI 分析尚未完成</h5>
+                        <p class="text-muted">该文件尚未进行AI智能分析</p>
+                    </div>
+                </div>
+            }
+
+            <!-- 相关文件 -->
+            @if (Model.RelatedFiles.Any())
+            {
+                <div class="card shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-collection me-2"></i>相关文件 (@Model.RelatedFiles.Count)
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            @foreach (var relatedFile in Model.RelatedFiles)
+                            {
+                                <div class="col-md-6 mb-3">
+                                    <div class="card border">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="me-3">
+                                                    @if (relatedFile.ContentType.StartsWith("image/"))
+                                                    {
+                                                        <i class="bi bi-image fs-3 text-success"></i>
+                                                    }
+                                                    else if (relatedFile.ContentType.Contains("pdf"))
+                                                    {
+                                                        <i class="bi bi-file-earmark-pdf fs-3 text-danger"></i>
+                                                    }
+                                                    else if (relatedFile.ContentType.Contains("word"))
+                                                    {
+                                                        <i class="bi bi-file-earmark-word fs-3 text-primary"></i>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="bi bi-file-earmark fs-3 text-primary"></i>
+                                                    }
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="mb-1">
+                                                        <a asp-action="Detail" asp-route-id="@relatedFile.Id" class="text-decoration-none">
+                                                            @(relatedFile.FileName.Length > 20 ? relatedFile.FileName.Substring(0, 20) + "..." : relatedFile.FileName)
+                                                        </a>
+                                                    </h6>
+                                                    <small class="text-muted">@relatedFile.UploadDate.ToString("yyyy-MM-dd")</small>
+                                                    @if (!string.IsNullOrEmpty(relatedFile.AiCategory))
+                                                    {
+                                                        <br /><span class="badge bg-secondary">@relatedFile.AiCategory</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- 侧边栏 -->
+        <div class="col-lg-4">
+            <!-- 文件信息 -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-circle me-2"></i>文件信息
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        @if (Model.File.ContentType.StartsWith("image/"))
+                        {
+                            <img src="/@Model.File.FilePath" class="img-thumbnail mb-3" style="max-height: 150px;" alt="@Model.File.FileName" />
+                        }
+                        else if (Model.File.ContentType.Contains("pdf"))
+                        {
+                            <i class="bi bi-file-earmark-pdf-fill display-1 text-danger"></i>
+                        }
+                        else if (Model.File.ContentType.Contains("word") || Model.File.ContentType.Contains("document"))
+                        {
+                            <i class="bi bi-file-earmark-word-fill display-1 text-primary"></i>
+                        }
+                        else if (Model.File.ContentType.Contains("excel") || Model.File.ContentType.Contains("sheet"))
+                        {
+                            <i class="bi bi-file-earmark-excel-fill display-1 text-success"></i>
+                        }
+                        else if (Model.File.ContentType.Contains("powerpoint") || Model.File.ContentType.Contains("presentation"))
+                        {
+                            <i class="bi bi-file-earmark-ppt-fill display-1 text-warning"></i>
+                        }
+                        else
+                        {
+                            <i class="bi bi-file-earmark-fill display-1 text-primary"></i>
+                        }
+                    </div>
+
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-start">
+                            <span><i class="bi bi-file-earmark me-2"></i>文件名</span>
+                            <span class="text-truncate ms-2 text-end" title="@Model.File.FileName">@Model.File.FileName</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-tag me-2"></i>类型</span>
+                            <span>@Model.File.ContentType</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-hdd me-2"></i>大小</span>
+                            <span>@(Model.File.FileSize < 1024 * 1024 ? $"{Model.File.FileSize / 1024:F1} KB" : $"{Model.File.FileSize / (1024 * 1024):F1} MB")</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-calendar me-2"></i>上传时间</span>
+                            <span>@Model.File.UploadDate.ToString("yyyy-MM-dd HH:mm")</span>
+                        </li>
+                        @if (!string.IsNullOrEmpty(Model.File.Description))
+                        {
+                            <li class="list-group-item">
+                                <span><i class="bi bi-card-text me-2"></i>描述</span>
+                                <div class="mt-2">@Model.File.Description</div>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 文件操作 -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-gear me-2"></i>文件操作
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a asp-action="Download" asp-route-id="@Model.File.Id" class="btn btn-primary">
+                            <i class="bi bi-download me-2"></i>下载文件
+                        </a>
+                        <a asp-controller="Share" asp-action="Create" asp-route-fileId="@Model.File.Id" class="btn btn-success">
+                            <i class="bi bi-share me-2"></i>创建分享
+                        </a>
+                        <a asp-action="RenameFile" asp-route-id="@Model.File.Id" asp-route-directoryId="@Model.File.DirectoryId" class="btn btn-outline-secondary">
+                            <i class="bi bi-pencil me-2"></i>重命名
+                        </a>
+                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                            <i class="bi bi-trash me-2"></i>删除文件
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">
+                    <i class="bi bi-exclamation-triangle me-2"></i>确认删除
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除文件 <strong>@Model.File.FileName</strong> 吗？</p>
+                <p class="text-muted">此操作无法撤销。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form asp-action="Delete" asp-route-id="@Model.File.Id" asp-route-directoryId="@Model.File.DirectoryId" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-2"></i>确认删除
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @@keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
+        }
+
+        .progress {
+            background-color: #e9ecef;
+        }
+
+        .img-thumbnail {
+            border: 2px solid #dee2e6;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .badge {
+            font-size: 0.8em;
+        }
+
+        .text-truncate {
+            max-width: 200px;
+        }
+    </style>
+} 
