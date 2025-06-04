@@ -1,4 +1,4 @@
-using CloudFileHub.Models;
+ using CloudFileHub.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,6 +14,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<FileModel> Files { get; set; } = null!;
     public DbSet<DirectoryModel> Directories { get; set; } = null!;
     public DbSet<FileShareModel> FileShares { get; set; } = null!;
+    public DbSet<AiAnalysisResult> AiAnalysisResults { get; set; } = null!;
     
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -36,6 +37,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .HasMany(f => f.Shares)
             .WithOne(s => s.File)
             .HasForeignKey(s => s.FileId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Entity<AiAnalysisResult>()
+            .HasOne(a => a.File)
+            .WithMany()
+            .HasForeignKey(a => a.FileId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

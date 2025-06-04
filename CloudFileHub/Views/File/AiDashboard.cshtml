@@ -1,0 +1,468 @@
+@{
+    ViewData["Title"] = "AI分析仪表板";
+}
+
+<div class="container fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-robot me-2"></i>AI分析仪表板</h1>
+        <a asp-action="Index" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left me-2"></i>返回文件管理
+        </a>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center bg-primary text-white hover-effect">
+                <div class="card-body">
+                    <i class="bi bi-files fs-1 mb-2"></i>
+                    <h4 id="totalFiles">
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                    </h4>
+                    <p class="card-text">总文件数</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-success text-white hover-effect">
+                <div class="card-body">
+                    <i class="bi bi-check-circle fs-1 mb-2"></i>
+                    <h4 id="analyzedFiles">
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                    </h4>
+                    <p class="card-text">已分析文件</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-warning text-white hover-effect">
+                <div class="card-body">
+                    <i class="bi bi-clock fs-1 mb-2"></i>
+                    <h4 id="pendingFiles">
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                    </h4>
+                    <p class="card-text">待分析文件</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-info text-white hover-effect">
+                <div class="card-body">
+                    <i class="bi bi-tags fs-1 mb-2"></i>
+                    <h4 id="totalTags">
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                    </h4>
+                    <p class="card-text">生成标签数</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-bar-chart me-2"></i>文档类别分布</h5>
+                </div>
+                <div class="card-body">
+                    <div id="categoryChart">
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                            <p class="mt-2">正在加载类别统计...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-cloud me-2"></i>热门标签</h5>
+                </div>
+                <div class="card-body">
+                    <div id="tagsChart">
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                            <p class="mt-2">正在加载标签统计...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-search me-2"></i>AI分析搜索</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="categorySearch" class="form-label">按类别搜索：</label>
+                            <select class="form-select" id="categorySearch">
+                                <option value="">选择类别...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="tagSearch" class="form-label">按标签搜索：</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="tagSearch" placeholder="输入标签...">
+                                <button class="btn btn-outline-primary" type="button" id="searchByTag">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div id="searchResults"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let allCategories = [];
+        let allTags = [];
+
+        // 页面加载时获取数据
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStatistics();
+            loadCategories();
+            loadTags();
+            
+            // 定期刷新统计数据（每60秒）
+            setInterval(() => {
+                loadStatistics();
+                loadCategories();
+                loadTags();
+            }, 60000);
+        });
+
+        // 加载统计数据
+        function loadStatistics() {
+            fetch('/api/ai/statistics')
+                .then(response => response.json())
+                .then(data => {
+                    updateStatisticCard('totalFiles', data.totalFiles);
+                    updateStatisticCard('analyzedFiles', data.analyzedFiles);
+                    updateStatisticCard('pendingFiles', data.pendingFiles);
+                    updateStatisticCard('totalTags', data.totalTags);
+                })
+                .catch(error => {
+                    console.error('加载统计数据失败:', error);
+                    // 使用默认值
+                    updateStatisticCard('totalFiles', 0);
+                    updateStatisticCard('analyzedFiles', 0);
+                    updateStatisticCard('pendingFiles', 0);
+                    updateStatisticCard('totalTags', 0);
+                });
+        }
+
+        // 更新统计卡片的数字，带动画效果
+        function updateStatisticCard(elementId, value) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.innerHTML = `<span class="number-animation">${value}</span>`;
+            }
+        }
+
+        // 加载类别数据
+        function loadCategories() {
+            fetch('/api/ai/categories')
+                .then(response => response.json())
+                .then(data => {
+                    allCategories = data;
+                    renderCategoryChart(data);
+                    populateCategorySelect(data);
+                })
+                .catch(error => {
+                    console.error('加载类别数据失败:', error);
+                    document.getElementById('categoryChart').innerHTML = '<p class="text-muted text-center">无法加载类别数据</p>';
+                });
+        }
+
+        // 加载标签数据
+        function loadTags() {
+            fetch('/api/ai/tags')
+                .then(response => response.json())
+                .then(data => {
+                    allTags = data;
+                    renderTagsChart(data);
+                })
+                .catch(error => {
+                    console.error('加载标签数据失败:', error);
+                    document.getElementById('tagsChart').innerHTML = '<p class="text-muted text-center">无法加载标签数据</p>';
+                });
+        }
+
+        // 渲染类别图表
+        function renderCategoryChart(categories) {
+            if (!categories || categories.length === 0) {
+                document.getElementById('categoryChart').innerHTML = '<p class="text-muted text-center">暂无类别数据</p>';
+                return;
+            }
+
+            let html = '';
+            const maxCount = Math.max(...categories.map(c => c.count));
+
+            categories.forEach(category => {
+                const percentage = (category.count / maxCount) * 100;
+                html += `
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span>${category.category}</span>
+                            <span class="text-muted">${category.count} 个文件</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: ${percentage}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('categoryChart').innerHTML = html;
+        }
+
+        // 渲染标签图表
+        function renderTagsChart(tags) {
+            if (!tags || tags.length === 0) {
+                document.getElementById('tagsChart').innerHTML = '<p class="text-muted text-center">暂无标签数据</p>';
+                return;
+            }
+
+            let html = '<div class="d-flex flex-wrap gap-2">';
+            
+            tags.slice(0, 20).forEach(tag => {
+                const size = Math.min(16 + tag.count * 2, 24); // 根据使用频率调整字体大小
+                html += `
+                    <span class="badge bg-secondary clickable-tag" 
+                          style="font-size: ${size}px; cursor: pointer;" 
+                          data-tag="${tag.tag}"
+                          title="使用次数: ${tag.count}">
+                        ${tag.tag}
+                    </span>
+                `;
+            });
+
+            html += '</div>';
+            document.getElementById('tagsChart').innerHTML = html;
+
+            // 添加标签点击事件
+            document.querySelectorAll('.clickable-tag').forEach(tagElement => {
+                tagElement.addEventListener('click', function() {
+                    const tag = this.getAttribute('data-tag');
+                    searchByTag(tag);
+                });
+            });
+        }
+
+        // 填充类别选择框
+        function populateCategorySelect(categories) {
+            const select = document.getElementById('categorySearch');
+            select.innerHTML = '<option value="">选择类别...</option>';
+            
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.category;
+                option.textContent = `${category.category} (${category.count})`;
+                select.appendChild(option);
+            });
+
+            // 添加类别搜索事件
+            select.addEventListener('change', function() {
+                if (this.value) {
+                    searchByCategory(this.value);
+                } else {
+                    clearSearchResults();
+                }
+            });
+        }
+
+        // 按类别搜索
+        function searchByCategory(category) {
+            fetch(`/api/ai/search/category/${encodeURIComponent(category)}`)
+                .then(response => response.json())
+                .then(files => {
+                    displaySearchResults(files, `类别"${category}"的搜索结果`);
+                })
+                .catch(error => {
+                    console.error('类别搜索失败:', error);
+                    displayError('搜索失败，请稍后重试');
+                });
+        }
+
+        // 按标签搜索
+        function searchByTag(tag) {
+            fetch(`/api/ai/search/tag/${encodeURIComponent(tag)}`)
+                .then(response => response.json())
+                .then(files => {
+                    displaySearchResults(files, `标签"${tag}"的搜索结果`);
+                })
+                .catch(error => {
+                    console.error('标签搜索失败:', error);
+                    displayError('搜索失败，请稍后重试');
+                });
+        }
+
+        // 显示搜索结果
+        function displaySearchResults(files, title) {
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (!files || files.length === 0) {
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-info">
+                        <h6>${title}</h6>
+                        <p class="mb-0">未找到相关文件</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="alert alert-success">
+                    <h6>${title} (${files.length} 个文件)</h6>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>文件名</th>
+                                <th>类别</th>
+                                <th>标签</th>
+                                <th>上传时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            files.forEach(file => {
+                html += `
+                    <tr>
+                        <td><i class="bi bi-file-earmark me-2"></i>${file.fileName}</td>
+                        <td>
+                            ${file.aiCategory ? `<span class="badge bg-primary">${file.aiCategory}</span>` : '<span class="text-muted">-</span>'}
+                        </td>
+                        <td>
+                            ${file.aiTags ? file.aiTags.split(',').slice(0, 3).map(tag => `<span class="badge bg-secondary me-1">${tag.trim()}</span>`).join('') : '<span class="text-muted">-</span>'}
+                        </td>
+                        <td>${new Date(file.uploadDate).toLocaleDateString()}</td>
+                        <td>
+                            <a href="/File/Download/${file.id}" class="btn btn-sm btn-outline-primary" title="下载">
+                                <i class="bi bi-download"></i>
+                            </a>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table></div>';
+            resultsDiv.innerHTML = html;
+        }
+
+        // 显示错误信息
+        function displayError(message) {
+            document.getElementById('searchResults').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>${message}
+                </div>
+            `;
+        }
+
+        // 清除搜索结果
+        function clearSearchResults() {
+            document.getElementById('searchResults').innerHTML = '';
+        }
+
+        // 标签搜索按钮事件
+        document.getElementById('searchByTag').addEventListener('click', function() {
+            const tag = document.getElementById('tagSearch').value.trim();
+            if (tag) {
+                searchByTag(tag);
+            }
+        });
+
+        // 标签搜索输入框回车事件
+        document.getElementById('tagSearch').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const tag = this.value.trim();
+                if (tag) {
+                    searchByTag(tag);
+                }
+            }
+        });
+    </script>
+
+    <style>
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @@keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .clickable-tag:hover {
+            transform: scale(1.1);
+            transition: transform 0.2s ease;
+        }
+
+        .card {
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .hover-effect {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .hover-effect:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2) !important;
+        }
+
+        .number-animation {
+            animation: countUp 0.8s ease-out;
+        }
+
+        @@keyframes countUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(10px);
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0);
+            }
+        }
+
+        .chart-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+        }
+    </style>
+} 

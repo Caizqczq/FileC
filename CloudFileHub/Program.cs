@@ -13,6 +13,14 @@ builder.Services.AddControllersWithViews();
 builder.Services.Configure<AliyunOSSOptions>(
     builder.Configuration.GetSection(AliyunOSSOptions.SectionName));
 
+// Configure AI Assistant options (保留原有配置支持)
+builder.Services.Configure<AiAssistantOptions>(
+    builder.Configuration.GetSection(AiAssistantOptions.SectionName));
+
+// Configure AlibabaCloud AI options
+builder.Services.Configure<AlibabaCloudAiOptions>(
+    builder.Configuration.GetSection("AlibabaCloudAi"));
+
 // Add DbContext - 使用MySQL
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -36,6 +44,24 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 builder.Services.AddScoped<FileService>();
 builder.Services.AddScoped<ShareService>();
 builder.Services.AddScoped<AliyunOSSService>();
+
+// Add AI-related services
+builder.Services.AddScoped<DocumentTextExtractorService>();
+
+// Add HttpClient for AlibabaCloud AI Services
+builder.Services.AddHttpClient<AlibabaCloudAiService>();
+builder.Services.AddHttpClient<AlibabaCloudCompatibleAiService>();
+
+// Register both AI services
+builder.Services.AddScoped<AiAssistantService>();
+builder.Services.AddScoped<AlibabaCloudAiService>();
+builder.Services.AddScoped<AlibabaCloudCompatibleAiService>();
+
+// Register AI service factory (可选，支持动态切换)
+builder.Services.AddScoped<AiServiceFactory>();
+
+// Register AI Assistant Service - 使用阿里云百炼兼容模式实现
+builder.Services.AddScoped<IAiAssistantService, AlibabaCloudCompatibleAiService>();
 
 var app = builder.Build();
 

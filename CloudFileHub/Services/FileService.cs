@@ -9,12 +9,24 @@ public class FileService
     private readonly ApplicationDbContext _context;
     private readonly IWebHostEnvironment _environment;
     private readonly AliyunOSSService _ossService;
+    private readonly DocumentTextExtractorService _textExtractor;
+    private readonly IAiAssistantService _aiAssistant;
+    private readonly ILogger<FileService> _logger;
 
-    public FileService(ApplicationDbContext context, IWebHostEnvironment environment, AliyunOSSService ossService)
+    public FileService(
+        ApplicationDbContext context, 
+        IWebHostEnvironment environment, 
+        AliyunOSSService ossService,
+        DocumentTextExtractorService textExtractor,
+        IAiAssistantService aiAssistant,
+        ILogger<FileService> logger)
     {
         _context = context;
         _environment = environment;
         _ossService = ossService;
+        _textExtractor = textExtractor;
+        _aiAssistant = aiAssistant;
+        _logger = logger;
     }
 
     public async Task<List<FileModel>> GetUserFilesAsync(string userId, int? directoryId = null)
@@ -109,6 +121,9 @@ public class FileService
             user.StorageUsed += file.Length;
             await _context.SaveChangesAsync();
         }
+
+        // 异步进行AI分析（不阻塞文件上传）
+        _ = Task.Run(async () => await AnalyzeFileWithAiAsync(fileModel.Id));
 
         return fileModel;
     }
@@ -444,6 +459,197 @@ public class FileService
             .Where(f => f.UserId == userId &&
                    (f.FileName.Contains(searchTerm) ||
                     (f.Description != null && f.Description.Contains(searchTerm))))
+            .OrderByDescending(f => f.UploadDate)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// 对文件进行AI分析
+    /// </summary>
+    public async Task AnalyzeFileWithAiAsync(int fileId)
+    {
+        try
+        {
+            var fileModel = await _context.Files.FindAsync(fileId);
+            if (fileModel == null) return;
+
+            // 检查是否支持AI分析
+            if (!_textExtractor.IsSupportedFile(fileModel.ContentType, fileModel.FileName))
+            {
+                _logger.LogInformation("文件类型不支持AI分析: {FileName}", fileModel.FileName);
+                return;
+            }
+
+            // 从OSS下载文件内容
+            var fileStream = await _ossService.DownloadFileAsync(fileModel.FilePath);
+            if (fileStream == null)
+            {
+                _logger.LogWarning("无法从OSS下载文件: {FileName}", fileModel.FileName);
+                return;
+            }
+
+            string extractedText;
+            using (fileStream)
+            {
+                extractedText = await _textExtractor.ExtractTextAsync(fileStream, fileModel.FileName, fileModel.ContentType);
+            }
+
+            if (string.IsNullOrWhiteSpace(extractedText))
+            {
+                _logger.LogWarning("无法从文件中提取文本内容: {FileName}", fileModel.FileName);
+                return;
+            }
+
+            // 清理文本
+            var cleanText = _textExtractor.CleanExtractedText(extractedText);
+
+            // AI分析
+            var analysisResult = await _aiAssistant.AnalyzeDocumentAsync(cleanText, fileModel.FileName, fileModel.ContentType);
+
+            // 更新文件模型
+            fileModel.AiSummary = analysisResult.Summary;
+            fileModel.AiCategory = analysisResult.Category;
+            fileModel.AiTags = string.Join(", ", analysisResult.Tags);
+            fileModel.LastAiAnalysis = DateTime.UtcNow;
+
+            // 删除旧的分析结果（如果存在）
+            var oldResult = await _context.AiAnalysisResults.FirstOrDefaultAsync(a => a.FileId == fileId);
+            if (oldResult != null)
+            {
+                _context.AiAnalysisResults.Remove(oldResult);
+            }
+
+            // 保存新的AI分析结果到详细表
+            var aiResult = new AiAnalysisResult
+            {
+                FileId = fileId,
+                Summary = analysisResult.Summary,
+                Category = analysisResult.Category,
+                Tags = System.Text.Json.JsonSerializer.Serialize(analysisResult.Tags),
+                Confidence = analysisResult.Confidence,
+                Language = analysisResult.Language,
+                ExtractedContent = cleanText.Length > 5000 ? cleanText.Substring(0, 5000) : cleanText
+            };
+
+            _context.AiAnalysisResults.Add(aiResult);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("文件AI分析完成: {FileName}, 类别: {Category}", fileModel.FileName, analysisResult.Category);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "文件AI分析失败: FileId={FileId}", fileId);
+        }
+    }
+
+    /// <summary>
+    /// 对已存在的文件进行AI重新分析
+    /// </summary>
+    public async Task<bool> ReanalyzeFileAsync(int fileId, string userId)
+    {
+        try
+        {
+            var file = await _context.Files.FirstOrDefaultAsync(f => f.Id == fileId && f.UserId == userId);
+            if (file == null)
+            {
+                return false;
+            }
+
+            // 检查是否支持AI分析
+            if (!_textExtractor.IsSupportedFile(file.ContentType, file.FileName))
+            {
+                return false;
+            }
+
+            // 下载文件内容
+            var fileStream = await _ossService.DownloadFileAsync(file.FilePath);
+            if (fileStream == null)
+            {
+                return false;
+            }
+
+            using (fileStream)
+            {
+                // 提取文档内容
+                var extractedText = await _textExtractor.ExtractTextAsync(fileStream, file.FileName, file.ContentType);
+                
+                if (string.IsNullOrWhiteSpace(extractedText))
+                {
+                    return false;
+                }
+
+                // 清理文本
+                var cleanText = _textExtractor.CleanExtractedText(extractedText);
+
+                // AI分析
+                var analysisResult = await _aiAssistant.AnalyzeDocumentAsync(cleanText, file.FileName, file.ContentType);
+
+                // 更新文件模型
+                file.AiSummary = analysisResult.Summary;
+                file.AiCategory = analysisResult.Category;
+                file.AiTags = string.Join(", ", analysisResult.Tags);
+                file.LastAiAnalysis = DateTime.UtcNow;
+
+                // 删除旧的分析结果
+                var oldResult = await _context.AiAnalysisResults.FirstOrDefaultAsync(a => a.FileId == fileId);
+                if (oldResult != null)
+                {
+                    _context.AiAnalysisResults.Remove(oldResult);
+                }
+
+                // 保存新的AI分析结果
+                var aiResult = new AiAnalysisResult
+                {
+                    FileId = fileId,
+                    Summary = analysisResult.Summary,
+                    Category = analysisResult.Category,
+                    Tags = System.Text.Json.JsonSerializer.Serialize(analysisResult.Tags),
+                    Confidence = analysisResult.Confidence,
+                    Language = analysisResult.Language,
+                    ExtractedContent = cleanText.Length > 5000 ? cleanText.Substring(0, 5000) : cleanText
+                };
+
+                _context.AiAnalysisResults.Add(aiResult);
+                await _context.SaveChangesAsync();
+
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "文件AI重新分析失败: FileId={FileId}", fileId);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 获取文件的AI分析结果
+    /// </summary>
+    public async Task<AiAnalysisResult?> GetFileAnalysisAsync(int fileId, string userId)
+    {
+        return await _context.AiAnalysisResults
+            .Include(a => a.File)
+            .FirstOrDefaultAsync(a => a.FileId == fileId && a.File!.UserId == userId);
+    }
+
+    /// <summary>
+    /// 根据AI类别搜索文件
+    /// </summary>
+    public async Task<List<FileModel>> SearchFilesByCategoryAsync(string category, string userId)
+    {
+        return await _context.Files
+            .Where(f => f.UserId == userId && f.AiCategory == category)
+            .OrderByDescending(f => f.UploadDate)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// 根据AI标签搜索文件
+    /// </summary>
+    public async Task<List<FileModel>> SearchFilesByTagAsync(string tag, string userId)
+    {
+        return await _context.Files
+            .Where(f => f.UserId == userId && f.AiTags != null && f.AiTags.Contains(tag))
             .OrderByDescending(f => f.UploadDate)
             .ToListAsync();
     }

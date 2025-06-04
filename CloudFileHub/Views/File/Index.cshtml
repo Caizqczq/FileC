@@ -109,6 +109,17 @@
                             </ul>
                         </div>
 
+                        <div class="dropdown me-2">
+                            <button class="btn btn-outline-info dropdown-toggle" type="button" id="aiDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-robot me-1"></i>AI功能
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="aiDropdown">
+                                <li><a class="dropdown-item" asp-action="AiDashboard"><i class="bi bi-graph-up me-2"></i>AI仪表板</a></li>
+                                <li><a class="dropdown-item" href="#" id="batchAiAnalyzeBtn"><i class="bi bi-robot me-2"></i>批量AI分析</a></li>
+                                <li><a class="dropdown-item" href="#" id="refreshAiStatusBtn"><i class="bi bi-arrow-clockwise me-2"></i>刷新AI状态</a></li>
+                            </ul>
+                        </div>
+
                         <div class="dropdown">
                             <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="batchDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-list-check me-1"></i>批量操作
@@ -197,7 +208,11 @@
                                                     <i class="bi bi-file-earmark-fill fs-1 text-primary"></i>
                                                 }
                                             </div>
-                                            <h5 class="card-title text-truncate">@file.FileName</h5>
+                                            <h5 class="card-title text-truncate">
+                                                <a asp-action="Detail" asp-route-id="@file.Id" class="text-decoration-none text-dark">
+                                                    @file.FileName
+                                                </a>
+                                            </h5>
                                             <p class="card-text small text-muted">
                                                 @(file.FileSize < 1024 * 1024 ? $"{file.FileSize / 1024:F1} KB" : $"{file.FileSize / (1024 * 1024):F1} MB")
                                                 <br />
@@ -210,23 +225,70 @@
                                                     </span>
                                                 }
                                             </p>
+                                            @* AI分析结果显示 *@
+                                            @if (!string.IsNullOrEmpty(file.AiCategory))
+                                            {
+                                                <div class="ai-analysis-info mt-2">
+                                                    <div class="mb-1">
+                                                        <span class="badge bg-primary">
+                                                            <i class="bi bi-robot me-1"></i>@file.AiCategory
+                                                        </span>
+                                                    </div>
+                                                    @if (!string.IsNullOrEmpty(file.AiSummary))
+                                                    {
+                                                        <p class="small text-muted mb-1" data-bs-toggle="tooltip" title="@file.AiSummary">
+                                                            <i class="bi bi-file-text me-1"></i>@(file.AiSummary.Length > 50 ? file.AiSummary.Substring(0, 50) + "..." : file.AiSummary)
+                                                        </p>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(file.AiTags))
+                                                    {
+                                                        <div class="ai-tags">
+                                                            @foreach (var tag in file.AiTags.Split(',', StringSplitOptions.RemoveEmptyEntries).Take(2))
+                                                            {
+                                                                <span class="badge bg-secondary me-1">@tag.Trim()</span>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="ai-analysis-placeholder mt-2" data-file-id="@file.Id">
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-clock me-1"></i>
+                                                        <span class="ai-status-text">AI分析中...</span>
+                                                    </small>
+                                                </div>
+                                            }
                                         </div>
                                         <div class="card-footer bg-transparent border-0">
                                             <div class="btn-group w-100" role="group">
+                                                <a asp-action="Detail" asp-route-id="@file.Id" class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="查看详情">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
                                                 <a asp-action="Download" asp-route-id="@file.Id" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="下载">
                                                     <i class="bi bi-download"></i>
                                                 </a>
                                                 <a asp-controller="Share" asp-action="Create" asp-route-fileId="@file.Id" class="btn btn-sm btn-outline-success" data-bs-toggle="tooltip" title="分享">
                                                     <i class="bi bi-share"></i>
                                                 </a>
-                                                <a asp-action="RenameFile" asp-route-id="@file.Id" asp-route-directoryId="@Model.CurrentDirectoryId" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" title="重命名">
-                                                    <i class="bi bi-pencil"></i>
-                                                </a>
-                                                <form asp-action="Delete" asp-route-id="@file.Id" asp-route-directoryId="@Model.CurrentDirectoryId" method="post" data-confirm="确定要删除此文件吗？" class="d-inline">
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" title="删除">
-                                                        <i class="bi bi-trash"></i>
+                                                <button type="button" class="btn btn-sm btn-outline-warning ai-reanalyze-btn" data-file-id="@file.Id" data-bs-toggle="tooltip" title="AI重新分析">
+                                                    <i class="bi bi-robot"></i>
+                                                </button>
+                                                <div class="btn-group">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                                        <i class="bi bi-three-dots"></i>
                                                     </button>
-                                                </form>
+                                                    <ul class="dropdown-menu">
+                                                        <li><a class="dropdown-item" asp-action="RenameFile" asp-route-id="@file.Id" asp-route-directoryId="@Model.CurrentDirectoryId"><i class="bi bi-pencil me-2"></i>重命名</a></li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li>
+                                                            <form asp-action="Delete" asp-route-id="@file.Id" asp-route-directoryId="@Model.CurrentDirectoryId" method="post" data-confirm="确定要删除此文件吗？" class="d-inline">
+                                                                <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>删除</button>
+                                                            </form>
+                                                        </li>
+                                                    </ul>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -248,6 +310,7 @@
                                         <th>类型</th>
                                         <th>大小</th>
                                         <th>日期</th>
+                                        <th>AI分析</th>
                                         <th>描述</th>
                                         <th>操作</th>
                                     </tr>
@@ -269,6 +332,7 @@
                                             <td>文件夹</td>
                                             <td>-</td>
                                             <td>@directory.CreatedDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                            <td>-</td>
                                             <td>-</td>
                                             <td>
                                                 <div class="btn-group btn-group-sm" role="group">
@@ -294,11 +358,37 @@
                                                 </div>
                                             </td>
                                             <td>
-                                                <i class="bi bi-file-earmark me-2"></i>@file.FileName
+                                                <i class="bi bi-file-earmark me-2"></i>
+                                                <a asp-action="Detail" asp-route-id="@file.Id" class="text-decoration-none">
+                                                    @file.FileName
+                                                </a>
                                             </td>
                                             <td>@file.ContentType</td>
                                             <td>@(file.FileSize < 1024 * 1024 ? $"{file.FileSize / 1024:F1} KB" : $"{file.FileSize / (1024 * 1024):F1} MB")</td>
                                             <td>@file.UploadDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(file.AiCategory))
+                                                {
+                                                    <div>
+                                                        <span class="badge bg-primary mb-1">@file.AiCategory</span>
+                                                        @if (!string.IsNullOrEmpty(file.AiTags))
+                                                        {
+                                                            <br />
+                                                            @foreach (var tag in file.AiTags.Split(',', StringSplitOptions.RemoveEmptyEntries).Take(2))
+                                                            {
+                                                                <span class="badge bg-secondary me-1">@tag.Trim()</span>
+                                                            }
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <small class="text-muted ai-analysis-placeholder" data-file-id="@file.Id">
+                                                        <i class="bi bi-clock me-1"></i>
+                                                        <span class="ai-status-text">分析中...</span>
+                                                    </small>
+                                                }
+                                            </td>
                                             <td>
                                                 @if (!string.IsNullOrEmpty(file.Description))
                                                 {
@@ -313,20 +403,30 @@
                                             </td>
                                             <td>
                                                 <div class="btn-group btn-group-sm" role="group">
+                                                    <a asp-action="Detail" asp-route-id="@file.Id" class="btn btn-outline-secondary" data-bs-toggle="tooltip" title="查看详情">
+                                                        <i class="bi bi-eye"></i>
+                                                    </a>
                                                     <a asp-action="Download" asp-route-id="@file.Id" class="btn btn-outline-primary" data-bs-toggle="tooltip" title="下载">
                                                         <i class="bi bi-download"></i>
                                                     </a>
                                                     <a asp-controller="Share" asp-action="Create" asp-route-fileId="@file.Id" class="btn btn-outline-success" data-bs-toggle="tooltip" title="分享">
                                                         <i class="bi bi-share"></i>
                                                     </a>
-                                                    <a asp-action="RenameFile" asp-route-id="@file.Id" asp-route-directoryId="@Model.CurrentDirectoryId" class="btn btn-outline-info" data-bs-toggle="tooltip" title="重命名">
-                                                        <i class="bi bi-pencil"></i>
-                                                    </a>
-                                                    <form asp-action="Delete" asp-route-id="@file.Id" asp-route-directoryId="@Model.CurrentDirectoryId" method="post" data-confirm="确定要删除此文件吗？" class="d-inline">
-                                                        <button type="submit" class="btn btn-outline-danger" data-bs-toggle="tooltip" title="删除">
-                                                            <i class="bi bi-trash"></i>
+                                                    <div class="btn-group">
+                                                        <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                                            <i class="bi bi-three-dots"></i>
                                                         </button>
-                                                    </form>
+                                                        <ul class="dropdown-menu">
+                                                            <li><a class="dropdown-item" asp-action="RenameFile" asp-route-id="@file.Id" asp-route-directoryId="@Model.CurrentDirectoryId"><i class="bi bi-pencil me-2"></i>重命名</a></li>
+                                                            <li><a class="dropdown-item ai-reanalyze-btn" href="#" data-file-id="@file.Id"><i class="bi bi-robot me-2"></i>AI重新分析</a></li>
+                                                            <li><hr class="dropdown-divider"></li>
+                                                            <li>
+                                                                <form asp-action="Delete" asp-route-id="@file.Id" asp-route-directoryId="@Model.CurrentDirectoryId" method="post" data-confirm="确定要删除此文件吗？" class="d-inline">
+                                                                    <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>删除</button>
+                                                                </form>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
                                                 </div>
                                             </td>
                                         </tr>
@@ -680,5 +780,264 @@
                 updateBatchActionButtons();
             }
         });
+
+        // 批量AI分析按钮
+        document.getElementById('batchAiAnalyzeBtn')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const selectedFiles = Array.from(document.querySelectorAll('.file-checkbox:checked')).map(cb => parseInt(cb.value));
+            
+            if (selectedFiles.length === 0) {
+                showToast('请选择要进行AI分析的文件', 'warning');
+                return;
+            }
+            
+            const btn = this;
+            const originalContent = btn.innerHTML;
+            
+            btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>批量分析中...';
+            btn.disabled = true;
+
+            fetch('/api/ai/batch-analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                },
+                body: JSON.stringify(selectedFiles)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(`批量AI分析完成！成功: ${data.successCount}，失败: ${data.failCount}`, 'success');
+                    // 等待几秒后刷新AI状态
+                    setTimeout(() => {
+                        refreshAiStatus();
+                        // 取消选中状态
+                        document.querySelectorAll('.file-checkbox:checked').forEach(cb => cb.checked = false);
+                        updateBatchActionButtons();
+                    }, 3000);
+                } else {
+                    showToast('批量AI分析失败: ' + (data.message || '未知错误'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('批量AI分析失败:', error);
+                showToast('批量AI分析失败，请稍后重试', 'error');
+            })
+            .finally(() => {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+            });
+        });
+
+        // 刷新AI状态按钮
+        document.getElementById('refreshAiStatusBtn')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const btn = this;
+            const originalContent = btn.innerHTML;
+            
+            btn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-2"></i>刷新中...';
+            btn.disabled = true;
+            
+            refreshAiStatus();
+            
+            setTimeout(() => {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+                showToast('AI状态已刷新', 'success');
+            }, 2000);
+        });
+
+        // 刷新所有文件的AI状态
+        function refreshAiStatus() {
+            const fileItems = document.querySelectorAll('.file-item[data-id]');
+            fileItems.forEach(item => {
+                const fileId = item.getAttribute('data-id');
+                if (fileId) {
+                    refreshFileAiStatus(fileId);
+                }
+            });
+        }
+
+        // 刷新单个文件的AI状态
+        function refreshFileAiStatus(fileId) {
+            fetch(`/api/ai/status/${fileId}`)
+                .then(response => response.json())
+                .then(data => {
+                    updateFileAiDisplay(fileId, data);
+                })
+                .catch(error => {
+                    console.error('获取AI状态失败:', error);
+                });
+        }
+
+        // 更新文件的AI显示
+        function updateFileAiDisplay(fileId, aiData) {
+            const fileItems = document.querySelectorAll(`[data-id="${fileId}"]`);
+            
+            fileItems.forEach(fileItem => {
+                if (aiData.hasAnalysis) {
+                    // 更新网格视图中的AI信息
+                    const gridAiPlaceholder = fileItem.querySelector('.ai-analysis-placeholder');
+                    if (gridAiPlaceholder) {
+                        const newAiInfo = document.createElement('div');
+                        newAiInfo.className = 'ai-analysis-info mt-2';
+                        newAiInfo.innerHTML = `
+                            <div class="mb-1">
+                                <span class="badge bg-primary">
+                                    <i class="bi bi-robot me-1"></i>${aiData.aiCategory || 'N/A'}
+                                </span>
+                            </div>
+                            ${aiData.aiSummary ? `
+                                <p class="small text-muted mb-1" data-bs-toggle="tooltip" title="${aiData.aiSummary}">
+                                    <i class="bi bi-file-text me-1"></i>${aiData.aiSummary.length > 50 ? aiData.aiSummary.substring(0, 50) + '...' : aiData.aiSummary}
+                                </p>
+                            ` : ''}
+                            ${aiData.aiTags ? `
+                                <div class="ai-tags">
+                                    ${aiData.aiTags.split(',').slice(0, 2).map(tag => `<span class="badge bg-secondary me-1">${tag.trim()}</span>`).join('')}
+                                </div>
+                            ` : ''}
+                        `;
+                        gridAiPlaceholder.replaceWith(newAiInfo);
+                    }
+
+                    // 更新表格视图中的AI信息
+                    const tableRow = document.querySelector(`tr[data-id="${fileId}"]`);
+                    if (tableRow) {
+                        const tableAiPlaceholder = tableRow.querySelector('.ai-analysis-placeholder');
+                        if (tableAiPlaceholder) {
+                            const newAiInfo = document.createElement('div');
+                            newAiInfo.innerHTML = `
+                                <span class="badge bg-primary mb-1">${aiData.aiCategory || 'N/A'}</span>
+                                ${aiData.aiTags ? `
+                                    <br />
+                                    ${aiData.aiTags.split(',').slice(0, 2).map(tag => `<span class="badge bg-secondary me-1">${tag.trim()}</span>`).join('')}
+                                ` : ''}
+                            `;
+                            tableAiPlaceholder.replaceWith(newAiInfo);
+                        }
+                    }
+                } else {
+                    // 更新分析状态文本
+                    const statusTexts = fileItem.querySelectorAll('.ai-status-text');
+                    statusTexts.forEach(text => {
+                        text.textContent = '等待分析...';
+                    });
+                }
+            });
+        }
+
+        // 页面加载完成后定期检查AI分析状态
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初次加载后5秒检查一次
+            setTimeout(() => {
+                refreshAiStatus();
+            }, 5000);
+            
+            // 之后每30秒检查一次（仅针对未分析的文件）
+            setInterval(() => {
+                const pendingFiles = document.querySelectorAll('.ai-analysis-placeholder[data-file-id]');
+                if (pendingFiles.length > 0) {
+                    refreshAiStatus();
+                }
+            }, 30000);
+        });
+
+        // AI重新分析功能
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.ai-reanalyze-btn')) {
+                e.preventDefault();
+                const button = e.target.closest('.ai-reanalyze-btn');
+                const fileId = button.getAttribute('data-file-id');
+                
+                if (!fileId) return;
+                
+                // 显示加载状态
+                const originalIcon = button.innerHTML;
+                button.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i>';
+                button.disabled = true;
+                
+                // 发送AI重新分析请求
+                fetch(`/api/ai/reanalyze/${fileId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    button.innerHTML = originalIcon;
+                    button.disabled = false;
+                    
+                    if (data.success) {
+                        // 显示成功消息
+                        showToast('AI分析已完成！', 'success');
+                        // 刷新页面以显示新的分析结果
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    } else {
+                        showToast(data.message || 'AI分析失败，请稍后重试', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('AI分析请求失败:', error);
+                    button.innerHTML = originalIcon;
+                    button.disabled = false;
+                    showToast('AI分析请求失败，请稍后重试', 'error');
+                });
+            }
+        });
+
+        // 显示提示消息的函数
+        function showToast(message, type = 'info') {
+            // 创建toast元素
+            const toast = document.createElement('div');
+            const alertClass = type === 'error' ? 'danger' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info';
+            const iconClass = type === 'error' ? 'exclamation-triangle' : type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle';
+            
+            toast.className = `alert alert-${alertClass} alert-dismissible fade show position-fixed`;
+            toast.style.cssText = 'top: 20px; right: 20px; z-index: 1050; min-width: 300px;';
+            toast.innerHTML = `
+                <i class="bi bi-${iconClass} me-2"></i>${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // 自动移除toast
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 5000);
+        }
     </script>
+
+    <style>
+        .ai-analysis-info .badge {
+            font-size: 0.7em;
+        }
+        
+        .ai-tags .badge {
+            font-size: 0.6em;
+        }
+        
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+        
+        @@keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .ai-analysis-placeholder {
+            opacity: 0.7;
+        }
+    </style>
 }

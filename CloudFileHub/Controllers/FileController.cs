@@ -1,4 +1,5 @@
 using CloudFileHub.Models;
+using CloudFileHub.Models.ViewModels;
 using CloudFileHub.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -526,5 +527,101 @@ public class FileController : Controller
         }
 
         return RedirectToAction(nameof(Index), new { directoryId = model.CurrentDirectoryId });
+    }
+
+    /// <summary>
+    /// AI分析仪表板
+    /// </summary>
+    public IActionResult AiDashboard()
+    {
+        return View();
+    }
+
+    /// <summary>
+    /// 查看文件详情
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> Detail(int id)
+    {
+        var userId = _userManager.GetUserId(User);
+        if (userId == null)
+        {
+            return Challenge();
+        }
+
+        var file = await _fileService.GetFileByIdAsync(id, userId);
+        if (file == null)
+        {
+            return NotFound();
+        }
+
+        // 获取AI分析结果
+        var aiAnalysis = await _fileService.GetFileAnalysisAsync(id, userId);
+
+        // 生成预览URL（对于图片、PDF等可预览的文件）
+        string? previewUrl = null;
+        bool canPreview = false;
+
+        if (file.ContentType.StartsWith("image/"))
+        {
+            previewUrl = await _fileService.GenerateDownloadUrlAsync(id, userId, TimeSpan.FromHours(1));
+            canPreview = true;
+        }
+        else if (file.ContentType.Contains("pdf"))
+        {
+            previewUrl = await _fileService.GenerateDownloadUrlAsync(id, userId, TimeSpan.FromHours(1));
+            canPreview = true;
+        }
+
+        // 获取相关文件（同类别的其他文件）
+        var relatedFiles = new List<FileModel>();
+        if (!string.IsNullOrEmpty(file.AiCategory))
+        {
+            var categoryFiles = await _fileService.SearchFilesByCategoryAsync(file.AiCategory, userId);
+            relatedFiles = categoryFiles.Where(f => f.Id != file.Id).Take(5).ToList();
+        }
+
+        var viewModel = new FileDetailViewModel
+        {
+            File = file,
+            AiAnalysis = aiAnalysis,
+            PreviewUrl = previewUrl,
+            CanPreview = canPreview,
+            ExtractedContent = aiAnalysis?.ExtractedContent,
+            RelatedFiles = relatedFiles
+        };
+
+        return View(viewModel);
+    }
+
+    /// <summary>
+    /// 获取文件预览内容（用于AJAX请求）
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> Preview(int id)
+    {
+        var userId = _userManager.GetUserId(User);
+        if (userId == null)
+        {
+            return Unauthorized();
+        }
+
+        var file = await _fileService.GetFileByIdAsync(id, userId);
+        if (file == null)
+        {
+            return NotFound();
+        }
+
+        // 只允许预览图片和PDF文件
+        if (file.ContentType.StartsWith("image/") || file.ContentType.Contains("pdf"))
+        {
+            var (stream, fileName, contentType) = await _fileService.GetFileStreamAsync(id, userId);
+            if (stream != null && contentType != null)
+            {
+                return File(stream, contentType);
+            }
+        }
+
+        return NotFound();
     }
 }

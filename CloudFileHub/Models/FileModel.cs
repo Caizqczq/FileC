@@ -35,4 +35,10 @@ public class FileModel
     public DirectoryModel? Directory { get; set; }
     
     public ICollection<FileShareModel> Shares { get; set; } = new List<FileShareModel>();
+    
+    // AI分析相关属性
+    public string? AiSummary { get; set; }
+    public string? AiCategory { get; set; }
+    public string? AiTags { get; set; }
+    public DateTime? LastAiAnalysis { get; set; }
 }
