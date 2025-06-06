@@ -28,25 +28,34 @@ public class AliyunOSSService
     {
         try
         {
-            _logger.LogInformation("开始上传文件到OSS: {Key}", key);
+            _logger.LogInformation("开始上传文件到OSS: {Key}, 流大小: {Size} bytes", key, stream.Length);
             var result = _ossClient.PutObject(_options.BucketName, key, stream);
             var success = result.HttpStatusCode == System.Net.HttpStatusCode.OK;
             
             if (success)
             {
-                _logger.LogInformation("文件上传成功: {Key}", key);
+                _logger.LogInformation("文件上传成功: {Key}, ETag: {ETag}", key, result.ETag);
             }
             else
             {
-                _logger.LogWarning("文件上传失败，HTTP状态码: {StatusCode}, 文件: {Key}", result.HttpStatusCode, key);
+                _logger.LogWarning("文件上传失败，HTTP状态码: {StatusCode}, 文件: {Key}, 响应: {Response}", 
+                    result.HttpStatusCode, key, result.ResponseMetadata);
             }
             
             return Task.FromResult(success);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "OSS上传失败: {Key}", key);
+            _logger.LogError(ex, "OSS上传失败: {Key}, 异常详情: {Message}", key, ex.Message);
+            if (ex.InnerException != null)
+            {
+                _logger.LogError("内部异常: {InnerException}", ex.InnerException.Message);
+            }
             Console.WriteLine($"OSS上传失败: {ex.Message}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"内部异常: {ex.InnerException.Message}");
+            }
             return Task.FromResult(false);
         }
     }

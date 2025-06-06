@@ -65,7 +65,7 @@ public class AccountController : Controller
                     await _signInManager.SignInAsync(user, isPersistent: false);
                     
                     _logger.LogInformation("重定向到文件页面");
-                    return RedirectToAction("Index", "Home"); // 暂时重定向到Home页面
+                    return RedirectToAction("Index", "Dashboard");
                 }
                 
                 foreach (var error in result.Errors)
@@ -177,7 +177,7 @@ public class AccountController : Controller
         }
         else
         {
-            return RedirectToAction("Index", "File");
+            return RedirectToAction("Index", "Dashboard");
         }
     }
 }

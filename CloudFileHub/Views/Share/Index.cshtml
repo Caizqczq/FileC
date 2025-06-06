@@ -50,7 +50,7 @@
                                             <a asp-action="Details" asp-route-id="@share.Id" class="btn btn-outline-primary">
                                                 <i class="bi bi-info-circle"></i>
                                             </a>
-                                            <form asp-action="Delete" asp-route-id="@share.Id" method="post" onsubmit="return confirm('确定要删除此分享链接吗？');">
+                                            <form asp-action="Delete" asp-route-id="@share.Id" method="post" data-confirm-share="@share.File.FileName">
                                                 <button type="submit" class="btn btn-outline-danger">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
@@ -66,3 +66,23 @@
         </div>
     }
 </div>
+
+@section Scripts {
+    <script>
+        // 确认删除分享
+        document.addEventListener('submit', function(e) {
+            const form = e.target;
+            if (form.hasAttribute('data-confirm-share')) {
+                e.preventDefault();
+                
+                const fileName = form.getAttribute('data-confirm-share');
+                confirmShareDelete(fileName).then((confirmed) => {
+                    if (confirmed) {
+                        form.removeAttribute('data-confirm-share');
+                        form.submit();
+                    }
+                });
+            }
+        });
+    </script>
+}

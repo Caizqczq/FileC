@@ -22,6 +22,7 @@
                         <input type="hidden" name="Operation" value="move" />
                         <input type="hidden" name="CurrentDirectoryId" value="@ViewBag.CurrentDirectoryId" />
                         <input type="hidden" id="targetDirectoryId" name="TargetDirectoryId" value="" />
+                        <input type="hidden" id="hasSelectedTarget" name="HasSelectedTarget" value="false" />
                         
                         <div id="fileIdsContainer"></div>
                         <div id="directoryIdsContainer"></div>
@@ -86,11 +87,26 @@
             element.classList.add('active');
             element.querySelector('.selected-icon').style.display = 'inline-block';
             
-            // 设置目标文件夹ID
-            document.getElementById('targetDirectoryId').value = directoryId;
+            // 设置目标文件夹ID - 对于根目录，设置为null而不是空字符串
+            const targetInput = document.getElementById('targetDirectoryId');
+            const hasSelectedInput = document.getElementById('hasSelectedTarget');
+            
+            if (directoryId === '' || directoryId === null || directoryId === undefined) {
+                targetInput.value = ''; // 根目录使用空字符串，后端会将其处理为null
+                // 添加一个标记来表示已经选择了根目录
+                targetInput.setAttribute('data-root-selected', 'true');
+            } else {
+                targetInput.value = directoryId;
+                targetInput.removeAttribute('data-root-selected');
+            }
+            
+            // 标记已选择目标
+            hasSelectedInput.value = 'true';
             
             // 启用移动按钮
             document.getElementById('moveButton').disabled = false;
+            
+            console.log('Selected directory:', directoryId, 'Target input value:', targetInput.value, 'HasSelectedTarget:', hasSelectedInput.value);
         }
         
         document.addEventListener('DOMContentLoaded', function() {

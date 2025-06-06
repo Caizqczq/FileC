@@ -1,0 +1,419 @@
+@model CloudFileHub.Models.ViewModels.DashboardViewModel
+@{
+    ViewData["Title"] = "仪表盘";
+}
+
+<div class="container-fluid">
+    <!-- 欢迎信息 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-3">欢迎回来，@User.Identity?.Name!</h1>
+            <p class="text-muted">您的云端文件管理中心 - 这里是您的数据概览</p>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                总文件数</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.UserStats.TotalFiles</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-file fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                存储使用情况</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                @Model.UserStats.FormattedStorageUsed / @Model.UserStats.FormattedStorageLimit
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-hdd fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                文件夹数量</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.UserStats.TotalDirectories</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-folder fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                AI分析文件</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.UserStats.FilesWithAiAnalysis</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-brain fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 存储使用率进度条 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">存储空间使用情况</h6>
+                </div>
+                <div class="card-body">
+                    <h4 class="small font-weight-bold">存储使用率 
+                        <span class="float-right">@(Model.UserStats.StorageUsagePercentage.ToString("F1"))%</span>
+                    </h4>
+                    <div class="progress mb-4">
+                        <div class="progress-bar @(Model.UserStats.StorageUsagePercentage > 90 ? "bg-danger" : 
+                                                   Model.UserStats.StorageUsagePercentage > 70 ? "bg-warning" : "bg-primary")" 
+                             role="progressbar" 
+                             style="width: @(Model.UserStats.StorageUsagePercentage)%"
+                             aria-valuenow="@Model.UserStats.StorageUsagePercentage" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100"></div>
+                    </div>
+                    <p class="text-muted small">
+                        已使用 @Model.UserStats.FormattedStorageUsed，共 @Model.UserStats.FormattedStorageLimit
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 活动统计和图表 -->
+    <div class="row mb-4">
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">文件类型分布</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-pie pt-4 pb-2">
+                        <canvas id="myPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">活动统计</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center mb-3">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-gray-800 text-uppercase mb-1">今日上传</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.ActivityStats.FilesUploadedToday 个文件</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-upload text-gray-300"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="row no-gutters align-items-center mb-3">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-gray-800 text-uppercase mb-1">本周上传</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.ActivityStats.FilesUploadedThisWeek 个文件</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-week text-gray-300"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="row no-gutters align-items-center mb-3">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-gray-800 text-uppercase mb-1">本月上传</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.ActivityStats.FilesUploadedThisMonth 个文件</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-alt text-gray-300"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="row no-gutters align-items-center mb-3">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-gray-800 text-uppercase mb-1">本周分享</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.ActivityStats.SharesCreatedThisWeek 个分享</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-share-alt text-gray-300"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-gray-800 text-uppercase mb-1">本周AI分析</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.ActivityStats.AiAnalysisThisWeek 次分析</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-robot text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最近活动 -->
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">最近上传的文件</h6>
+                    <a href="@Url.Action("Index", "File")" class="btn btn-sm btn-primary">查看全部</a>
+                </div>
+                <div class="card-body">
+                    @if (Model.RecentFiles.Any())
+                    {
+                        @foreach (var file in Model.RecentFiles)
+                        {
+                            <div class="d-flex align-items-center py-2 border-bottom">
+                                <div class="mr-3">
+                                    <i class="fas @(file.ContentType.StartsWith("image/") ? "fa-image text-success" :
+                                                   file.ContentType.Contains("pdf") ? "fa-file-pdf text-danger" :
+                                                   file.ContentType.Contains("word") ? "fa-file-word text-primary" :
+                                                   file.ContentType.Contains("excel") ? "fa-file-excel text-success" :
+                                                   "fa-file text-gray-400")"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="small font-weight-bold">@file.FileName</div>
+                                    <div class="small text-gray-500">@file.UploadDate.ToString("yyyy-MM-dd HH:mm")</div>
+                                </div>
+                                <div class="text-gray-500 small">
+                                    @(file.FileSize < 1024 ? $"{file.FileSize} B" :
+                                      file.FileSize < 1024 * 1024 ? $"{file.FileSize / 1024.0:F1} KB" :
+                                      file.FileSize < 1024 * 1024 * 1024 ? $"{file.FileSize / (1024.0 * 1024):F1} MB" :
+                                      $"{file.FileSize / (1024.0 * 1024 * 1024):F1} GB")
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center py-3">暂无文件</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">最近AI分析</h6>
+                    <a href="@Url.Action("Index", "File")" class="btn btn-sm btn-primary">查看全部</a>
+                </div>
+                <div class="card-body">
+                    @if (Model.RecentAiAnalyzedFiles.Any())
+                    {
+                        @foreach (var file in Model.RecentAiAnalyzedFiles)
+                        {
+                            <div class="d-flex align-items-center py-2 border-bottom">
+                                <div class="mr-3">
+                                    <i class="fas fa-brain text-warning"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="small font-weight-bold">@file.FileName</div>
+                                    <div class="small text-gray-500">@file.LastAiAnalysis?.ToString("yyyy-MM-dd HH:mm")</div>
+                                    <div class="small text-gray-600">@(file.AiSummary?.Length > 50 ? file.AiSummary.Substring(0, 50) + "..." : file.AiSummary)</div>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center py-3">暂无AI分析记录</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最近分享 -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">最近分享</h6>
+                    <a href="@Url.Action("Index", "Share")" class="btn btn-sm btn-primary">查看全部</a>
+                </div>
+                <div class="card-body">
+                    @if (Model.RecentShares.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-borderless">
+                                <thead>
+                                    <tr>
+                                        <th>文件名</th>
+                                        <th>创建时间</th>
+                                        <th>过期时间</th>
+                                        <th>下载次数</th>
+                                        <th>状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var share in Model.RecentShares)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <i class="fas fa-share-alt text-primary mr-2"></i>
+                                                @share.File.FileName
+                                            </td>
+                                            <td>@share.CreatedDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                            <td>
+                                                @if (share.ExpiryDate.HasValue)
+                                                {
+                                                    @share.ExpiryDate.Value.ToString("yyyy-MM-dd HH:mm")
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">永不过期</span>
+                                                }
+                                            </td>
+                                            <td>@share.DownloadCount</td>
+                                            <td>
+                                                @if (!share.ExpiryDate.HasValue || share.ExpiryDate > DateTime.UtcNow)
+                                                {
+                                                    <span class="badge badge-success">有效</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge badge-danger">已过期</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center py-3">暂无分享记录</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        $(document).ready(function() {
+            // 加载存储统计图表
+            loadStorageChart();
+        });
+
+        function loadStorageChart() {
+            $.get('@Url.Action("GetStorageStats", "Dashboard")', function(data) {
+                if (data.error) {
+                    console.error('获取图表数据失败:', data.error);
+                    return;
+                }
+
+                var ctx = document.getElementById("myPieChart");
+                var myPieChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            data: data.data,
+                            backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69'],
+                            hoverBackgroundColor: ['#2e59d9', '#17a673', '#2c9faf', '#f4b619', '#e02d1b', '#6f7180', '#484c57'],
+                            hoverBorderColor: "rgba(234, 236, 244, 1)",
+                        }],
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        tooltips: {
+                            backgroundColor: "rgb(255,255,255)",
+                            bodyFontColor: "#858796",
+                            borderColor: '#dddfeb',
+                            borderWidth: 1,
+                            xPadding: 15,
+                            yPadding: 15,
+                            displayColors: false,
+                            caretPadding: 10,
+                            callbacks: {
+                                label: function(tooltipItem, chart) {
+                                    var datasetLabel = chart.labels[tooltipItem.index] || '';
+                                    var value = chart.datasets[0].data[tooltipItem.index];
+                                    var count = data.counts[tooltipItem.index];
+                                    var formattedValue = value < 1024 ? value + ' B' :
+                                                       value < 1024 * 1024 ? (value / 1024).toFixed(1) + ' KB' :
+                                                       value < 1024 * 1024 * 1024 ? (value / (1024 * 1024)).toFixed(1) + ' MB' :
+                                                       (value / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+                                    return datasetLabel + ': ' + formattedValue + ' (' + count + '个文件)';
+                                }
+                            }
+                        },
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        cutoutPercentage: 60,
+                    },
+                });
+            }).fail(function() {
+                console.error('获取图表数据失败');
+            });
+        }
+    </script>
+}
+
+@section Styles {
+    <style>
+        .border-left-primary {
+            border-left: 0.25rem solid #4e73df !important;
+        }
+        .border-left-success {
+            border-left: 0.25rem solid #1cc88a !important;
+        }
+        .border-left-info {
+            border-left: 0.25rem solid #36b9cc !important;
+        }
+        .border-left-warning {
+            border-left: 0.25rem solid #f6c23e !important;
+        }
+        .chart-pie {
+            position: relative;
+            height: 15rem;
+        }
+    </style>
+} 

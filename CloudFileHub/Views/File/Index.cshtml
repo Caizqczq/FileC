@@ -185,7 +185,7 @@
                                             <div class="mb-3">
                                                 @if (file.ContentType.StartsWith("image/"))
                                                 {
-                                                    <img src="/@file.FilePath" class="img-thumbnail mb-2" style="max-height: 100px; max-width: 100%;" alt="@file.FileName" />
+                                                    <img src="@Url.Action("Preview", "File", new { id = file.Id })" class="img-thumbnail mb-2" style="max-height: 100px; max-width: 100%;" alt="@file.FileName" />
                                                 }
                                                 else if (file.ContentType.Contains("pdf"))
                                                 {
@@ -253,11 +253,24 @@
                                             }
                                             else
                                             {
-                                                <div class="ai-analysis-placeholder mt-2" data-file-id="@file.Id">
-                                                    <small class="text-muted">
-                                                        <i class="bi bi-clock me-1"></i>
-                                                        <span class="ai-status-text">AI分析中...</span>
-                                                    </small>
+                                                var textExtractor = Context.RequestServices.GetRequiredService<CloudFileHub.Services.DocumentTextExtractorService>();
+                                                var isSupported = textExtractor.IsSupportedFile(file.ContentType, file.FileName);
+                                                
+                                                <div class="mt-2">
+                                                    @if (isSupported)
+                                                    {
+                                                        <small class="text-info">
+                                                            <i class="bi bi-robot me-1"></i>
+                                                            点击AI分析按钮进行智能分析
+                                                        </small>
+                                                    }
+                                                    else
+                                                    {
+                                                        <small class="text-muted">
+                                                            <i class="bi bi-info-circle me-1"></i>
+                                                            此文件格式不支持AI分析
+                                                        </small>
+                                                    }
                                                 </div>
                                             }
                                         </div>
@@ -266,15 +279,24 @@
                                                 <a asp-action="Detail" asp-route-id="@file.Id" class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="查看详情">
                                                     <i class="bi bi-eye"></i>
                                                 </a>
-                                                <a asp-action="Download" asp-route-id="@file.Id" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="下载">
+                                                <button type="button" class="btn btn-sm btn-outline-primary download-btn" data-file-id="@file.Id" data-file-name="@file.FileName" data-bs-toggle="tooltip" title="下载">
                                                     <i class="bi bi-download"></i>
-                                                </a>
+                                                </button>
                                                 <a asp-controller="Share" asp-action="Create" asp-route-fileId="@file.Id" class="btn btn-sm btn-outline-success" data-bs-toggle="tooltip" title="分享">
                                                     <i class="bi bi-share"></i>
                                                 </a>
-                                                <button type="button" class="btn btn-sm btn-outline-warning ai-reanalyze-btn" data-file-id="@file.Id" data-bs-toggle="tooltip" title="AI重新分析">
-                                                    <i class="bi bi-robot"></i>
-                                                </button>
+                                                @if (!string.IsNullOrEmpty(file.AiCategory) || !string.IsNullOrEmpty(file.AiSummary))
+                                                {
+                                                    <button type="button" class="btn btn-sm btn-outline-warning ai-reanalyze-btn" data-file-id="@file.Id" data-bs-toggle="tooltip" title="AI重新分析">
+                                                        <i class="bi bi-robot"></i>
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button type="button" class="btn btn-sm btn-outline-info ai-reanalyze-btn" data-file-id="@file.Id" data-bs-toggle="tooltip" title="AI分析">
+                                                        <i class="bi bi-robot"></i>
+                                                    </button>
+                                                }
                                                 <div class="btn-group">
                                                     <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                                                         <i class="bi bi-three-dots"></i>
@@ -383,10 +405,23 @@
                                                 }
                                                 else
                                                 {
-                                                    <small class="text-muted ai-analysis-placeholder" data-file-id="@file.Id">
-                                                        <i class="bi bi-clock me-1"></i>
-                                                        <span class="ai-status-text">分析中...</span>
-                                                    </small>
+                                                    var textExtractor = Context.RequestServices.GetRequiredService<CloudFileHub.Services.DocumentTextExtractorService>();
+                                                    var isSupported = textExtractor.IsSupportedFile(file.ContentType, file.FileName);
+                                                    
+                                                    @if (isSupported)
+                                                    {
+                                                        <small class="text-info">
+                                                            <i class="bi bi-robot me-1"></i>
+                                                            可分析
+                                                        </small>
+                                                    }
+                                                    else
+                                                    {
+                                                        <small class="text-muted">
+                                                            <i class="bi bi-x-circle me-1"></i>
+                                                            不支持
+                                                        </small>
+                                                    }
                                                 }
                                             </td>
                                             <td>
@@ -406,9 +441,9 @@
                                                     <a asp-action="Detail" asp-route-id="@file.Id" class="btn btn-outline-secondary" data-bs-toggle="tooltip" title="查看详情">
                                                         <i class="bi bi-eye"></i>
                                                     </a>
-                                                    <a asp-action="Download" asp-route-id="@file.Id" class="btn btn-outline-primary" data-bs-toggle="tooltip" title="下载">
+                                                    <button type="button" class="btn btn-outline-primary download-btn" data-file-id="@file.Id" data-file-name="@file.FileName" data-bs-toggle="tooltip" title="下载">
                                                         <i class="bi bi-download"></i>
-                                                    </a>
+                                                    </button>
                                                     <a asp-controller="Share" asp-action="Create" asp-route-fileId="@file.Id" class="btn btn-outline-success" data-bs-toggle="tooltip" title="分享">
                                                         <i class="bi bi-share"></i>
                                                     </a>
@@ -418,7 +453,14 @@
                                                         </button>
                                                         <ul class="dropdown-menu">
                                                             <li><a class="dropdown-item" asp-action="RenameFile" asp-route-id="@file.Id" asp-route-directoryId="@Model.CurrentDirectoryId"><i class="bi bi-pencil me-2"></i>重命名</a></li>
-                                                            <li><a class="dropdown-item ai-reanalyze-btn" href="#" data-file-id="@file.Id"><i class="bi bi-robot me-2"></i>AI重新分析</a></li>
+                                                            @if (!string.IsNullOrEmpty(file.AiCategory) || !string.IsNullOrEmpty(file.AiSummary))
+                                                            {
+                                                                <li><a class="dropdown-item ai-reanalyze-btn" href="#" data-file-id="@file.Id"><i class="bi bi-robot me-2"></i>AI重新分析</a></li>
+                                                            }
+                                                            else
+                                                            {
+                                                                <li><a class="dropdown-item ai-reanalyze-btn" href="#" data-file-id="@file.Id"><i class="bi bi-robot me-2"></i>AI分析</a></li>
+                                                            }
                                                             <li><hr class="dropdown-divider"></li>
                                                             <li>
                                                                 <form asp-action="Delete" asp-route-id="@file.Id" asp-route-directoryId="@Model.CurrentDirectoryId" method="post" data-confirm="确定要删除此文件吗？" class="d-inline">
@@ -551,9 +593,18 @@
         document.addEventListener('submit', function(e) {
             const form = e.target;
             if (form.hasAttribute('data-confirm')) {
-                if (!confirm(form.getAttribute('data-confirm'))) {
-                    e.preventDefault();
-                }
+                e.preventDefault();
+                
+                // 获取文件名用于更好的提示
+                const fileName = form.querySelector('input[name="fileName"]')?.value || '此文件';
+                
+                confirmFileDelete(fileName).then((confirmed) => {
+                    if (confirmed) {
+                        // 移除data-confirm属性避免重复确认
+                        form.removeAttribute('data-confirm');
+                        form.submit();
+                    }
+                });
             }
         });
 
@@ -621,7 +672,7 @@
         updateBatchActionButtons();
 
         // 批量删除
-        document.getElementById('batchDeleteBtn')?.addEventListener('click', function(e) {
+        document.getElementById('batchDeleteBtn')?.addEventListener('click', async function(e) {
             e.preventDefault();
 
             const selectedFiles = Array.from(document.querySelectorAll('.file-checkbox:checked')).map(cb => cb.value);
@@ -632,59 +683,91 @@
                 return;
             }
 
-            if (!confirm(`确定要删除选中的 ${selectedFiles.length} 个文件和 ${selectedDirectories.length} 个文件夹吗？`)) {
+            // 使用自定义确认对话框
+            const totalCount = selectedFiles.length + selectedDirectories.length;
+            const message = selectedDirectories.length > 0 ? 
+                `确定要删除选中的 ${selectedFiles.length} 个文件和 ${selectedDirectories.length} 个文件夹吗？` :
+                `确定要删除选中的 ${selectedFiles.length} 个文件吗？`;
+                
+            const confirmed = await confirmBatchDelete(totalCount, selectedDirectories.length > 0 ? '项目' : '文件');
+            if (!confirmed) {
                 return;
             }
 
-            // 创建表单并提交
-            const form = document.createElement('form');
-            form.method = 'post';
-            form.action = '@Url.Action("BatchOperation")';
-
-            // 添加防伪令牌
-            const antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
-            if (antiForgeryToken) {
-                const tokenInput = document.createElement('input');
-                tokenInput.type = 'hidden';
-                tokenInput.name = '__RequestVerificationToken';
-                tokenInput.value = antiForgeryToken.value;
-                form.appendChild(tokenInput);
-            }
-
-            // 添加操作类型
-            const operationInput = document.createElement('input');
-            operationInput.type = 'hidden';
-            operationInput.name = 'Operation';
-            operationInput.value = 'delete';
-            form.appendChild(operationInput);
-
-            // 添加当前目录ID
-            const currentDirInput = document.createElement('input');
-            currentDirInput.type = 'hidden';
-            currentDirInput.name = 'CurrentDirectoryId';
-            currentDirInput.value = '@Model.CurrentDirectoryId';
-            form.appendChild(currentDirInput);
-
-            // 添加选中的文件ID
-            selectedFiles.forEach(fileId => {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'FileIds';
-                input.value = fileId;
-                form.appendChild(input);
+            // 显示批量删除进度
+            progressModal.show({
+                title: '批量删除',
+                titleIcon: 'bi-trash',
+                status: '正在删除...',
+                showCancel: false
             });
 
-            // 添加选中的目录ID
-            selectedDirectories.forEach(dirId => {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'DirectoryIds';
-                input.value = dirId;
-                form.appendChild(input);
-            });
+            // 模拟删除进度
+            let progress = 0;
+            const total = selectedFiles.length + selectedDirectories.length;
+            const deleteInterval = setInterval(() => {
+                progress += 15;
+                progressModal.updateProgress(
+                    progress, 
+                    `正在删除 ${total} 个项目...`,
+                    `已完成 ${Math.round(progress/100 * total)} / ${total} 个项目`
+                );
+                
+                if (progress >= 90) {
+                    clearInterval(deleteInterval);
+                    progressModal.updateProgress(100, '删除完成');
+                    
+                    // 创建表单并提交
+                    const form = document.createElement('form');
+                    form.method = 'post';
+                    form.action = '@Url.Action("BatchOperation")';
 
-            document.body.appendChild(form);
-            form.submit();
+                    // 添加防伪令牌
+                    const antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
+                    if (antiForgeryToken) {
+                        const tokenInput = document.createElement('input');
+                        tokenInput.type = 'hidden';
+                        tokenInput.name = '__RequestVerificationToken';
+                        tokenInput.value = antiForgeryToken.value;
+                        form.appendChild(tokenInput);
+                    }
+
+                    // 添加操作类型
+                    const operationInput = document.createElement('input');
+                    operationInput.type = 'hidden';
+                    operationInput.name = 'Operation';
+                    operationInput.value = 'delete';
+                    form.appendChild(operationInput);
+
+                    // 添加当前目录ID
+                    const currentDirInput = document.createElement('input');
+                    currentDirInput.type = 'hidden';
+                    currentDirInput.name = 'CurrentDirectoryId';
+                    currentDirInput.value = '@Model.CurrentDirectoryId';
+                    form.appendChild(currentDirInput);
+
+                    // 添加选中的文件ID
+                    selectedFiles.forEach(fileId => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'FileIds';
+                        input.value = fileId;
+                        form.appendChild(input);
+                    });
+
+                    // 添加选中的目录ID
+                    selectedDirectories.forEach(dirId => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'DirectoryIds';
+                        input.value = dirId;
+                        form.appendChild(input);
+                    });
+
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            }, 200);
         });
 
         // 批量下载
@@ -703,46 +786,71 @@
                 toggleBatchMode();
             }
 
-            // 创建表单并提交
-            const form = document.createElement('form');
-            form.method = 'post';
-            form.action = '@Url.Action("BatchOperation")';
-
-            // 添加防伪令牌
-            const antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
-            if (antiForgeryToken) {
-                const tokenInput = document.createElement('input');
-                tokenInput.type = 'hidden';
-                tokenInput.name = '__RequestVerificationToken';
-                tokenInput.value = antiForgeryToken.value;
-                form.appendChild(tokenInput);
-            }
-
-            // 添加操作类型
-            const operationInput = document.createElement('input');
-            operationInput.type = 'hidden';
-            operationInput.name = 'Operation';
-            operationInput.value = 'download';
-            form.appendChild(operationInput);
-
-            // 添加当前目录ID
-            const currentDirInput = document.createElement('input');
-            currentDirInput.type = 'hidden';
-            currentDirInput.name = 'CurrentDirectoryId';
-            currentDirInput.value = '@Model.CurrentDirectoryId';
-            form.appendChild(currentDirInput);
-
-            // 添加选中的文件ID
-            selectedFiles.forEach(fileId => {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'FileIds';
-                input.value = fileId;
-                form.appendChild(input);
+            // 显示批量下载进度
+            progressModal.show({
+                title: '批量下载',
+                titleIcon: 'bi-download',
+                status: '正在准备下载...',
+                showCancel: false
             });
 
-            document.body.appendChild(form);
-            form.submit();
+            // 模拟准备过程
+            let progress = 0;
+            const prepareInterval = setInterval(() => {
+                progress += 10;
+                progressModal.updateProgress(progress, `正在准备下载 ${selectedFiles.length} 个文件...`);
+                
+                if (progress >= 80) {
+                    clearInterval(prepareInterval);
+                    progressModal.updateProgress(100, '下载开始...');
+                    
+                    // 创建表单并提交
+                    const form = document.createElement('form');
+                    form.method = 'post';
+                    form.action = '@Url.Action("BatchOperation")';
+
+                    // 添加防伪令牌
+                    const antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
+                    if (antiForgeryToken) {
+                        const tokenInput = document.createElement('input');
+                        tokenInput.type = 'hidden';
+                        tokenInput.name = '__RequestVerificationToken';
+                        tokenInput.value = antiForgeryToken.value;
+                        form.appendChild(tokenInput);
+                    }
+
+                    // 添加操作类型
+                    const operationInput = document.createElement('input');
+                    operationInput.type = 'hidden';
+                    operationInput.name = 'Operation';
+                    operationInput.value = 'download';
+                    form.appendChild(operationInput);
+
+                    // 添加当前目录ID
+                    const currentDirInput = document.createElement('input');
+                    currentDirInput.type = 'hidden';
+                    currentDirInput.name = 'CurrentDirectoryId';
+                    currentDirInput.value = '@Model.CurrentDirectoryId';
+                    form.appendChild(currentDirInput);
+
+                    // 添加选中的文件ID
+                    selectedFiles.forEach(fileId => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'FileIds';
+                        input.value = fileId;
+                        form.appendChild(input);
+                    });
+
+                    document.body.appendChild(form);
+                    form.submit();
+                    
+                    // 1秒后隐藏进度条
+                    setTimeout(() => {
+                        progressModal.hide();
+                    }, 1000);
+                }
+            }, 150);
         });
 
         // 批量移动
@@ -795,8 +903,28 @@
             const btn = this;
             const originalContent = btn.innerHTML;
             
-            btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>批量分析中...';
+            btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>分析中...';
             btn.disabled = true;
+
+            // 显示批量AI分析进度
+            progressModal.show({
+                title: '批量AI分析',
+                titleIcon: 'bi-robot',
+                status: '正在启动AI分析...',
+                showCancel: false
+            });
+
+            // 模拟AI分析进度
+            let progress = 0;
+            const analysisInterval = setInterval(() => {
+                progress += 8;
+                const currentFile = Math.round(progress / 100 * selectedFiles.length);
+                progressModal.updateProgress(
+                    progress, 
+                    `正在分析第 ${currentFile} 个文件，共 ${selectedFiles.length} 个`,
+                    `AI正在处理文件内容和生成标签...`
+                );
+            }, 800);
 
             fetch('/api/ai/batch-analyze', {
                 method: 'POST',
@@ -808,22 +936,30 @@
             })
             .then(response => response.json())
             .then(data => {
+                clearInterval(analysisInterval);
+                
                 if (data.success) {
-                    showToast(`批量AI分析完成！成功: ${data.successCount}，失败: ${data.failCount}`, 'success');
+                    progressModal.showSuccess(
+                        '批量AI分析完成！', 
+                        `成功分析: ${data.successCount} 个，失败: ${data.failCount} 个`
+                    );
+                    
                     // 等待几秒后刷新AI状态
                     setTimeout(() => {
                         refreshAiStatus();
                         // 取消选中状态
                         document.querySelectorAll('.file-checkbox:checked').forEach(cb => cb.checked = false);
                         updateBatchActionButtons();
-                    }, 3000);
+                        progressModal.hide();
+                    }, 2000);
                 } else {
-                    showToast('批量AI分析失败: ' + (data.message || '未知错误'), 'error');
+                    progressModal.showError('批量AI分析失败', data.message || '未知错误');
                 }
             })
             .catch(error => {
+                clearInterval(analysisInterval);
                 console.error('批量AI分析失败:', error);
-                showToast('批量AI分析失败，请稍后重试', 'error');
+                progressModal.showError('批量AI分析失败', '网络连接错误或服务器无响应');
             })
             .finally(() => {
                 btn.innerHTML = originalContent;
@@ -921,32 +1057,47 @@
                         }
                     }
                 } else {
-                    // 更新分析状态文本
-                    const statusTexts = fileItem.querySelectorAll('.ai-status-text');
-                    statusTexts.forEach(text => {
-                        text.textContent = '等待分析...';
-                    });
+                    // 不再需要更新分析状态文本，因为现在显示的是静态提示
                 }
             });
         }
 
-        // 页面加载完成后定期检查AI分析状态
-        document.addEventListener('DOMContentLoaded', function() {
-            // 初次加载后5秒检查一次
-            setTimeout(() => {
-                refreshAiStatus();
-            }, 5000);
-            
-            // 之后每30秒检查一次（仅针对未分析的文件）
-            setInterval(() => {
-                const pendingFiles = document.querySelectorAll('.ai-analysis-placeholder[data-file-id]');
-                if (pendingFiles.length > 0) {
-                    refreshAiStatus();
-                }
-            }, 30000);
+        // 页面加载完成后不再需要定期检查AI分析状态
+
+        // 下载按钮事件处理
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.download-btn')) {
+                e.preventDefault();
+                const button = e.target.closest('.download-btn');
+                const fileId = button.getAttribute('data-file-id');
+                const fileName = button.getAttribute('data-file-name');
+                
+                if (!fileId || !fileName) return;
+                
+                // 显示加载状态
+                const originalIcon = button.innerHTML;
+                button.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i>';
+                button.disabled = true;
+                
+                // 开始下载
+                downloadFileWithProgress(`/File/Download/${fileId}`, fileName)
+                    .then(() => {
+                        // 下载完成
+                    })
+                    .catch((error) => {
+                        console.error('下载失败:', error);
+                    })
+                    .finally(() => {
+                        // 恢复按钮状态
+                        button.innerHTML = originalIcon;
+                        button.disabled = false;
+                    });
+            }
         });
 
-        // AI重新分析功能
+
+
+        // AI分析功能
         document.addEventListener('click', function(e) {
             if (e.target.closest('.ai-reanalyze-btn')) {
                 e.preventDefault();
@@ -955,12 +1106,16 @@
                 
                 if (!fileId) return;
                 
+                // 判断是首次分析还是重新分析
+                const isReanalysis = button.getAttribute('title') === 'AI重新分析';
+                const actionText = isReanalysis ? '重新分析' : '分析';
+                
                 // 显示加载状态
                 const originalIcon = button.innerHTML;
                 button.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i>';
                 button.disabled = true;
                 
-                // 发送AI重新分析请求
+                // 发送AI分析请求
                 fetch(`/api/ai/reanalyze/${fileId}`, {
                     method: 'POST',
                     headers: {
@@ -975,20 +1130,20 @@
                     
                     if (data.success) {
                         // 显示成功消息
-                        showToast('AI分析已完成！', 'success');
+                        showToast(`AI${actionText}已完成！`, 'success');
                         // 刷新页面以显示新的分析结果
                         setTimeout(() => {
                             window.location.reload();
                         }, 1000);
                     } else {
-                        showToast(data.message || 'AI分析失败，请稍后重试', 'error');
+                        showToast(data.message || `AI${actionText}失败，请稍后重试`, 'error');
                     }
                 })
                 .catch(error => {
-                    console.error('AI分析请求失败:', error);
+                    console.error(`AI${actionText}请求失败:`, error);
                     button.innerHTML = originalIcon;
                     button.disabled = false;
-                    showToast('AI分析请求失败，请稍后重试', 'error');
+                    showToast(`AI${actionText}请求失败，请稍后重试`, 'error');
                 });
             }
         });

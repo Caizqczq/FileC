@@ -79,6 +79,91 @@ public class FileController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Upload(IFormFile file, int? directoryId = null, string? description = null, bool? isPublic = null)
     {
+        // 单文件上传（向后兼容）
+        if (file != null)
+        {
+            return await UploadSingleFile(file, directoryId, description, isPublic);
+        }
+        
+        ModelState.AddModelError("", "请选择要上传的文件。");
+        return View();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UploadMultiple(List<IFormFile> files, int? directoryId = null, string? description = null, bool? isPublic = null)
+    {
+        var userId = _userManager.GetUserId(User);
+        if (userId == null)
+        {
+            return Challenge();
+        }
+
+        // 设置当前目录信息
+        ViewBag.DirectoryId = directoryId;
+        if (directoryId.HasValue)
+        {
+            var currentDirectory = await _fileService.GetDirectoryByIdAsync(directoryId.Value, userId);
+            ViewBag.CurrentDirectory = currentDirectory;
+        }
+
+        if (files == null || files.Count == 0)
+        {
+            ModelState.AddModelError("", "请选择要上传的文件。");
+            return View("Upload");
+        }
+
+        var uploadResults = new List<(string FileName, bool Success, string? Error)>();
+        var logger = HttpContext.RequestServices.GetService<ILogger<FileController>>();
+        
+        // 检查用户存储限制
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user != null)
+        {
+            var totalSize = files.Sum(f => f.Length);
+            if (user.StorageUsed + totalSize > user.StorageLimit)
+            {
+                ModelState.AddModelError("", "所选文件总大小超出存储限制。");
+                return View("Upload");
+            }
+        }
+
+        foreach (var file in files)
+        {
+            try
+            {
+                var result = await ValidateAndUploadSingleFile(file, userId, directoryId, description, logger);
+                uploadResults.Add((file.FileName, result.Success, result.Error));
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "上传文件 {FileName} 时发生错误", file.FileName);
+                uploadResults.Add((file.FileName, false, ex.Message));
+            }
+        }
+
+        // 生成结果消息
+        var successCount = uploadResults.Count(r => r.Success);
+        var failCount = uploadResults.Count(r => !r.Success);
+
+        if (successCount > 0)
+        {
+            TempData["SuccessMessage"] = $"成功上传 {successCount} 个文件";
+            if (failCount > 0)
+            {
+                TempData["WarningMessage"] = $"有 {failCount} 个文件上传失败";
+            }
+        }
+        else
+        {
+            TempData["ErrorMessage"] = "所有文件上传失败";
+        }
+
+        return RedirectToAction(nameof(Index), new { directoryId });
+    }
+
+    private async Task<IActionResult> UploadSingleFile(IFormFile file, int? directoryId = null, string? description = null, bool? isPublic = null)
+    {
         var userId = _userManager.GetUserId(User);
         if (userId == null)
         {
@@ -99,6 +184,55 @@ public class FileController : Controller
             return View();
         }
 
+        // 记录详细的文件信息用于调试
+        var fileLogger = HttpContext.RequestServices.GetService<ILogger<FileController>>();
+        fileLogger?.LogInformation("接收到文件上传请求: 文件名={FileName}, 大小={Size}, ContentType={ContentType}", 
+            file.FileName, file.Length, file.ContentType);
+
+        // 检查文件大小
+        const long maxFileSize = 100 * 1024 * 1024; // 100MB
+        if (file.Length > maxFileSize)
+        {
+            ModelState.AddModelError("", $"文件大小不能超过 {maxFileSize / (1024 * 1024)} MB。");
+            return View();
+        }
+
+        // 检查文件类型安全性
+        var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var dangerousExtensions = new[] { ".exe", ".bat", ".cmd", ".com", ".pif", ".scr", ".vbs", ".js" };
+        if (dangerousExtensions.Contains(fileExtension))
+        {
+            fileLogger?.LogWarning("文件扩展名被拒绝: {FileName}, 扩展名: {Extension}", file.FileName, fileExtension);
+            ModelState.AddModelError("", "出于安全考虑，不允许上传此类型的文件。");
+            return View();
+        }
+
+        // 验证Content-Type - 阻止危险的可执行文件类型
+        if (string.IsNullOrEmpty(file.ContentType))
+        {
+            fileLogger?.LogWarning("文件ContentType为空: {FileName}", file.FileName);
+            ModelState.AddModelError("", "无法检测文件类型，上传被拒绝。");
+            return View();
+        }
+
+        // 明确阻止的危险Content-Type
+        var dangerousContentTypes = new[] { 
+            "application/x-msdownload", 
+            "application/octet-stream",
+            "application/x-executable",
+            "application/x-dosexec"
+        };
+        
+        // 检查文件是否为可执行文件（通过扩展名和Content-Type双重验证）
+        if (dangerousContentTypes.Any(ct => file.ContentType.Contains(ct)) && 
+            dangerousExtensions.Contains(fileExtension))
+        {
+            fileLogger?.LogWarning("危险文件类型被拒绝: {FileName}, ContentType: {ContentType}, 扩展名: {Extension}", 
+                file.FileName, file.ContentType, fileExtension);
+            ModelState.AddModelError("", "出于安全考虑，不允许上传可执行文件。");
+            return View();
+        }
+
         // Check if user has enough storage space
         var user = await _userManager.FindByIdAsync(userId);
         if (user != null && user.StorageUsed + file.Length > user.StorageLimit)
@@ -109,13 +243,96 @@ public class FileController : Controller
 
         try
         {
-            await _fileService.UploadFileAsync(file, userId, directoryId, description);
+            fileLogger?.LogInformation("开始处理文件上传: {FileName}", file.FileName);
+            var uploadedFile = await _fileService.UploadFileAsync(file, userId, directoryId, description);
+            
+            fileLogger?.LogInformation("文件上传成功: {FileName}, 文件ID: {FileId}", file.FileName, uploadedFile.Id);
+            
+            // 添加成功消息
+            TempData["SuccessMessage"] = "文件上传成功！如需AI分析，请点击文件的'AI分析'按钮。";
+            
             return RedirectToAction(nameof(Index), new { directoryId });
+        }
+        catch (ArgumentException ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            return View();
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError("", $"文件处理失败: {ex.Message}");
+            return View();
         }
         catch (Exception ex)
         {
-            ModelState.AddModelError("", $"上传文件时出错: {ex.Message}");
+            // 记录详细错误日志
+            var logger = HttpContext.RequestServices.GetService<ILogger<FileController>>();
+            logger?.LogError(ex, "文件上传失败: FileName={FileName}, ContentType={ContentType}, Size={Size}", 
+                file.FileName, file.ContentType, file.Length);
+            
+            ModelState.AddModelError("", "文件上传失败，请稍后重试。如果问题持续存在，请联系管理员。");
             return View();
+        }
+    }
+
+    private async Task<(bool Success, string? Error)> ValidateAndUploadSingleFile(IFormFile file, string userId, int? directoryId, string? description, ILogger<FileController>? logger)
+    {
+        // 基本验证
+        if (file == null || file.Length == 0)
+        {
+            return (false, "文件为空");
+        }
+
+        // 检查文件大小
+        const long maxFileSize = 100 * 1024 * 1024; // 100MB
+        if (file.Length > maxFileSize)
+        {
+            return (false, $"文件大小不能超过 {maxFileSize / (1024 * 1024)} MB");
+        }
+
+        // 检查文件类型安全性
+        var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var dangerousExtensions = new[] { ".exe", ".bat", ".cmd", ".com", ".pif", ".scr", ".vbs", ".js" };
+        if (dangerousExtensions.Contains(fileExtension))
+        {
+            logger?.LogWarning("文件扩展名被拒绝: {FileName}, 扩展名: {Extension}", file.FileName, fileExtension);
+            return (false, "出于安全考虑，不允许上传此类型的文件");
+        }
+
+        // 验证Content-Type
+        if (string.IsNullOrEmpty(file.ContentType))
+        {
+            logger?.LogWarning("文件ContentType为空: {FileName}", file.FileName);
+            return (false, "无法检测文件类型，上传被拒绝");
+        }
+
+        // 明确阻止的危险Content-Type
+        var dangerousContentTypes = new[] { 
+            "application/x-msdownload", 
+            "application/octet-stream",
+            "application/x-executable",
+            "application/x-dosexec"
+        };
+        
+        if (dangerousContentTypes.Any(ct => file.ContentType.Contains(ct)) && 
+            dangerousExtensions.Contains(fileExtension))
+        {
+            logger?.LogWarning("危险文件类型被拒绝: {FileName}, ContentType: {ContentType}, 扩展名: {Extension}", 
+                file.FileName, file.ContentType, fileExtension);
+            return (false, "出于安全考虑，不允许上传可执行文件");
+        }
+
+        try
+        {
+            logger?.LogInformation("开始处理文件上传: {FileName}", file.FileName);
+            var uploadedFile = await _fileService.UploadFileAsync(file, userId, directoryId, description);
+            logger?.LogInformation("文件上传成功: {FileName}, 文件ID: {FileId}", file.FileName, uploadedFile.Id);
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "文件上传失败: {FileName}", file.FileName);
+            return (false, ex.Message);
         }
     }
 
@@ -480,7 +697,8 @@ public class FileController : Controller
         }
         else if (model.Operation == "move")
         {
-            if (!model.TargetDirectoryId.HasValue)
+            // 检查是否选择了目标文件夹
+            if (!model.HasSelectedTarget)
             {
                 TempData["ErrorMessage"] = "请选择目标文件夹";
                 return RedirectToAction(nameof(Index), new { directoryId = model.CurrentDirectoryId });
@@ -598,6 +816,7 @@ public class FileController : Controller
     /// 获取文件预览内容（用于AJAX请求）
     /// </summary>
     [HttpGet]
+    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client)]
     public async Task<IActionResult> Preview(int id)
     {
         var userId = _userManager.GetUserId(User);
@@ -618,10 +837,43 @@ public class FileController : Controller
             var (stream, fileName, contentType) = await _fileService.GetFileStreamAsync(id, userId);
             if (stream != null && contentType != null)
             {
-                return File(stream, contentType);
+                // 设置适当的缓存头
+                Response.Headers["Cache-Control"] = "public, max-age=3600";
+                Response.Headers["ETag"] = $"\"{file.Id}-{file.UploadDate.Ticks}\"";
+                
+                return File(stream, contentType, enableRangeProcessing: true);
             }
         }
 
         return NotFound();
     }
+
+    /// <summary>
+    /// 获取支持的文件格式信息
+    /// </summary>
+    [HttpGet]
+    public IActionResult GetSupportedFormats()
+    {
+        var supportedFormats = new
+        {
+            uploadFormats = new[]
+            {
+                "所有格式文件都可以上传"
+            },
+            aiAnalysisFormats = new[]
+            {
+                new { type = "PDF文档", extensions = new[] { ".pdf" }, description = "PDF格式文档" },
+                new { type = "Word文档", extensions = new[] { ".doc", ".docx" }, description = "Microsoft Word文档" },
+                new { type = "文本文件", extensions = new[] { ".txt" }, description = "纯文本文件" },
+                new { type = "CSV文件", extensions = new[] { ".csv" }, description = "逗号分隔值文件" },
+                new { type = "RTF文件", extensions = new[] { ".rtf" }, description = "富文本格式文件" }
+            },
+            maxFileSize = "100MB",
+            note = "只有支持AI分析的文件格式才能进行智能分析和标签提取"
+        };
+
+        return Ok(supportedFormats);
+    }
+
+
 }

@@ -3,6 +3,8 @@
     ViewData["Title"] = "文件详情 - " + Model.File.FileName;
 }
 
+@Html.AntiForgeryToken()
+
 <div class="container fade-in">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <nav aria-label="breadcrumb">
@@ -189,7 +191,7 @@
                     <div class="text-center mb-4">
                         @if (Model.File.ContentType.StartsWith("image/"))
                         {
-                            <img src="/@Model.File.FilePath" class="img-thumbnail mb-3" style="max-height: 150px;" alt="@Model.File.FileName" />
+                            <img src="@Url.Action("Preview", "File", new { id = Model.File.Id })" class="img-thumbnail mb-3" style="max-height: 150px;" alt="@Model.File.FileName" />
                         }
                         else if (Model.File.ContentType.Contains("pdf"))
                         {
@@ -250,16 +252,16 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <a asp-action="Download" asp-route-id="@Model.File.Id" class="btn btn-primary">
+                        <button type="button" class="btn btn-primary download-btn" data-file-id="@Model.File.Id" data-file-name="@Model.File.FileName">
                             <i class="bi bi-download me-2"></i>下载文件
-                        </a>
+                        </button>
                         <a asp-controller="Share" asp-action="Create" asp-route-fileId="@Model.File.Id" class="btn btn-success">
                             <i class="bi bi-share me-2"></i>创建分享
                         </a>
                         <a asp-action="RenameFile" asp-route-id="@Model.File.Id" asp-route-directoryId="@Model.File.DirectoryId" class="btn btn-outline-secondary">
                             <i class="bi bi-pencil me-2"></i>重命名
                         </a>
-                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <button type="button" class="btn btn-outline-danger delete-file-btn" data-file-name="@Model.File.FileName" data-file-id="@Model.File.Id" data-directory-id="@Model.File.DirectoryId">
                             <i class="bi bi-trash me-2"></i>删除文件
                         </button>
                     </div>
@@ -269,32 +271,7 @@
     </div>
 </div>
 
-<!-- 删除确认模态框 -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteModalLabel">
-                    <i class="bi bi-exclamation-triangle me-2"></i>确认删除
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>确定要删除文件 <strong>@Model.File.FileName</strong> 吗？</p>
-                <p class="text-muted">此操作无法撤销。</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <form asp-action="Delete" asp-route-id="@Model.File.Id" asp-route-directoryId="@Model.File.DirectoryId" method="post" class="d-inline">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-trash me-2"></i>确认删除
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 @section Styles {
     <style>
@@ -339,4 +316,54 @@
             max-width: 200px;
         }
     </style>
+}
+
+@section Scripts {
+    <script>
+        // 删除文件处理
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.delete-file-btn')) {
+                const btn = e.target.closest('.delete-file-btn');
+                const fileName = btn.getAttribute('data-file-name');
+                const fileId = btn.getAttribute('data-file-id');
+                const directoryId = btn.getAttribute('data-directory-id');
+                
+                confirmFileDelete(fileName).then((confirmed) => {
+                    if (confirmed) {
+                        // 创建表单并提交
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = '@Url.Action("Delete", "File")';
+                        
+                        // 添加反伪造令牌
+                        const token = document.querySelector('input[name="__RequestVerificationToken"]');
+                        if (token) {
+                            const tokenInput = document.createElement('input');
+                            tokenInput.type = 'hidden';
+                            tokenInput.name = '__RequestVerificationToken';
+                            tokenInput.value = token.value;
+                            form.appendChild(tokenInput);
+                        }
+                        
+                        // 添加文件ID
+                        const fileIdInput = document.createElement('input');
+                        fileIdInput.type = 'hidden';
+                        fileIdInput.name = 'id';
+                        fileIdInput.value = fileId;
+                        form.appendChild(fileIdInput);
+                        
+                        // 添加目录ID
+                        const directoryIdInput = document.createElement('input');
+                        directoryIdInput.type = 'hidden';
+                        directoryIdInput.name = 'directoryId';
+                        directoryIdInput.value = directoryId;
+                        form.appendChild(directoryIdInput);
+                        
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            }
+        });
+    </script>
 } 

@@ -138,7 +138,7 @@
                                             <div class="mb-3">
                                                 @if (file.ContentType.StartsWith("image/"))
                                                 {
-                                                    <img src="/@file.FilePath" class="img-thumbnail mb-2" style="max-height: 100px; max-width: 100%;" alt="@file.FileName" />
+                                                    <img src="@Url.Action("Preview", "File", new { id = file.Id })" class="img-thumbnail mb-2" style="max-height: 100px; max-width: 100%;" alt="@file.FileName" />
                                                 }
                                                 else if (file.ContentType.Contains("pdf"))
                                                 {
@@ -237,6 +237,7 @@
                                                         <i class="bi bi-pencil"></i>
                                                     </a>
                                                     <form asp-controller="File" asp-action="DeleteDirectory" asp-route-id="@directory.Id" asp-route-parentDirectoryId="@viewModel.CurrentDirectoryId" method="post" data-confirm="确定要删除此文件夹及其所有内容吗？" class="d-inline">
+                                                        <input type="hidden" name="folderName" value="@directory.Name" />
                                                         <button type="submit" class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" title="删除">
                                                             <i class="bi bi-trash"></i>
                                                         </button>
@@ -267,6 +268,7 @@
                                                         <i class="bi bi-pencil"></i>
                                                     </a>
                                                     <form asp-controller="File" asp-action="Delete" asp-route-id="@file.Id" asp-route-directoryId="@viewModel.CurrentDirectoryId" method="post" data-confirm="确定要删除此文件吗？" class="d-inline">
+                                                        <input type="hidden" name="fileName" value="@file.FileName" />
                                                         <button type="submit" class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" title="删除">
                                                             <i class="bi bi-trash"></i>
                                                         </button>
@@ -287,6 +289,36 @@
 
 @section Scripts {
     <script>
+        // 确认删除
+        document.addEventListener('submit', function(e) {
+            const form = e.target;
+            if (form.hasAttribute('data-confirm')) {
+                e.preventDefault();
+                
+                // 检查是文件还是文件夹
+                const fileName = form.querySelector('input[name="fileName"]')?.value;
+                const folderName = form.querySelector('input[name="folderName"]')?.value;
+                
+                if (folderName) {
+                    // 文件夹删除
+                    confirmFolderDelete(folderName).then((confirmed) => {
+                        if (confirmed) {
+                            form.removeAttribute('data-confirm');
+                            form.submit();
+                        }
+                    });
+                } else if (fileName) {
+                    // 文件删除
+                    confirmFileDelete(fileName).then((confirmed) => {
+                        if (confirmed) {
+                            form.removeAttribute('data-confirm');
+                            form.submit();
+                        }
+                    });
+                }
+            }
+        });
+
         // 搜索功能
         document.getElementById('searchInput').addEventListener('keyup', function() {
             const searchText = this.value.toLowerCase();

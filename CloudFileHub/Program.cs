@@ -40,10 +40,19 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
+// Configure cookie authentication
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/Account/Login";
+    options.LogoutPath = "/Account/Logout";
+    options.AccessDeniedPath = "/Account/Login";
+});
+
 // Add application services
 builder.Services.AddScoped<FileService>();
 builder.Services.AddScoped<ShareService>();
 builder.Services.AddScoped<AliyunOSSService>();
+builder.Services.AddScoped<DashboardService>();
 
 // Add AI-related services
 builder.Services.AddScoped<DocumentTextExtractorService>();
@@ -85,7 +94,7 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+    pattern: "{controller=Dashboard}/{action=Index}/{id?}");
 
 app.Run();
 

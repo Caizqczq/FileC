@@ -21,7 +21,11 @@ public class HomeController : Controller
 
     public IActionResult Index(int? directoryId = null)
     {
-        // 重定向到 FileController 的 Index 方法
+        // 如果用户已登录，重定向到仪表盘；否则重定向到文件页面
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            return RedirectToAction("Index", "Dashboard");
+        }
         return RedirectToAction("Index", "File", new { directoryId });
     }
 

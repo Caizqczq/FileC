@@ -23,14 +23,25 @@
                         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
                         <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="multiFileMode" />
+                                    <label class="form-check-label" for="multiFileMode">
+                                        <i class="bi bi-files me-1"></i>多文件上传模式
+                                    </label>
+                                </div>
+                                <small class="text-muted">单次最多可上传20个文件</small>
+                            </div>
+                            
                             <div id="drop-zone" class="border border-dashed border-primary rounded p-5 text-center">
                                 <i class="bi bi-cloud-upload fs-1 text-primary mb-3"></i>
-                                <h4>拖放文件到此处</h4>
+                                <h4 id="drop-zone-title">拖放文件到此处</h4>
                                 <p class="text-muted">或</p>
                                 <button type="button" class="btn btn-primary" id="selectFileBtn">
-                                    <i class="bi bi-folder2-open me-2"></i>选择文件
+                                    <i class="bi bi-folder2-open me-2"></i><span id="select-btn-text">选择文件</span>
                                 </button>
-                                <input type="file" id="file" name="file" class="d-none" required />
+                                <input type="file" id="file" name="file" class="d-none" />
+                                <input type="file" id="files" name="files" class="d-none" multiple />
                             </div>
                             <div id="file-preview" class="mt-3" style="display: none;"></div>
                         </div>
@@ -64,15 +75,22 @@
                         <li class="list-group-item d-flex">
                             <i class="bi bi-hdd text-primary me-3 fs-4"></i>
                             <div>
-                                <strong>最大文件大小</strong>
-                                <p class="mb-0 text-muted">100 MB</p>
+                                <strong>文件大小限制</strong>
+                                <p class="mb-0 text-muted">单个文件最大100MB，总大小不超过2GB</p>
+                            </div>
+                        </li>
+                        <li class="list-group-item d-flex">
+                            <i class="bi bi-files text-primary me-3 fs-4"></i>
+                            <div>
+                                <strong>多文件上传</strong>
+                                <p class="mb-0 text-muted">支持同时上传最多20个文件</p>
                             </div>
                         </li>
                         <li class="list-group-item d-flex">
                             <i class="bi bi-file-earmark text-primary me-3 fs-4"></i>
                             <div>
                                 <strong>支持的文件类型</strong>
-                                <p class="mb-0 text-muted">所有常见文件类型</p>
+                                <p class="mb-0 text-muted">所有常见文件类型（除可执行文件）</p>
                             </div>
                         </li>
                         <li class="list-group-item d-flex">
@@ -114,6 +132,8 @@
                     </a>
                 </div>
             </div>
+
+
         </div>
     </div>
 </div>
@@ -137,10 +157,47 @@
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
+        let isMultiFileMode = false;
+        let selectedFiles = [];
+
+        // 多文件模式切换
+        document.getElementById('multiFileMode').addEventListener('change', function() {
+            isMultiFileMode = this.checked;
+            updateUI();
+            clearSelectedFiles();
+        });
+
+        function updateUI() {
+            const dropZoneTitle = document.getElementById('drop-zone-title');
+            const selectBtnText = document.getElementById('select-btn-text');
+            const uploadForm = document.getElementById('uploadForm');
+            
+            if (isMultiFileMode) {
+                dropZoneTitle.textContent = '拖放多个文件到此处';
+                selectBtnText.textContent = '选择多个文件';
+                uploadForm.action = '@Url.Action("UploadMultiple")';
+            } else {
+                dropZoneTitle.textContent = '拖放文件到此处';
+                selectBtnText.textContent = '选择文件';
+                uploadForm.action = '@Url.Action("Upload")';
+            }
+        }
+
+        function clearSelectedFiles() {
+            selectedFiles = [];
+            document.getElementById('file').value = '';
+            document.getElementById('files').value = '';
+            document.getElementById('file-preview').style.display = 'none';
+        }
+
         // 选择文件按钮点击事件
         document.getElementById('selectFileBtn').addEventListener('click', function(e) {
             e.preventDefault();
-            document.getElementById('file').click();
+            if (isMultiFileMode) {
+                document.getElementById('files').click();
+            } else {
+                document.getElementById('file').click();
+            }
         });
 
         // 防止拖放区域的点击事件冒泡到其他元素
@@ -148,15 +205,32 @@
             // 如果点击的是拖放区域本身（而不是其中的按钮），则触发文件选择
             if (e.target === this) {
                 e.preventDefault();
-                document.getElementById('file').click();
+                if (isMultiFileMode) {
+                    document.getElementById('files').click();
+                } else {
+                    document.getElementById('file').click();
+                }
             }
         });
 
-        // 文件选择后显示预览
+        // 单文件选择
         document.getElementById('file').addEventListener('change', function() {
-            const file = this.files[0];
-            if (file) {
-                showFilePreview(file);
+            if (!isMultiFileMode && this.files.length > 0) {
+                selectedFiles = [this.files[0]];
+                showFilesPreview();
+            }
+        });
+
+        // 多文件选择
+        document.getElementById('files').addEventListener('change', function() {
+            if (isMultiFileMode && this.files.length > 0) {
+                // 限制最多20个文件
+                if (this.files.length > 20) {
+                    alert('最多只能选择20个文件');
+                    return;
+                }
+                selectedFiles = Array.from(this.files);
+                showFilesPreview();
             }
         });
 
@@ -196,25 +270,60 @@
 
         function handleDrop(e) {
             const dt = e.dataTransfer;
-            const file = dt.files[0];
+            const droppedFiles = Array.from(dt.files);
 
-            // 设置文件输入
-            const fileInput = document.getElementById('file');
-
-            // 创建一个新的 FileList 对象（这是一个技巧，因为 FileList 是只读的）
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(file);
-            fileInput.files = dataTransfer.files;
+            if (isMultiFileMode) {
+                // 多文件模式：限制最多20个文件
+                if (droppedFiles.length > 20) {
+                    alert('最多只能拖放20个文件');
+                    return;
+                }
+                selectedFiles = droppedFiles;
+                
+                // 设置多文件输入
+                const filesInput = document.getElementById('files');
+                const dataTransfer = new DataTransfer();
+                droppedFiles.forEach(file => dataTransfer.items.add(file));
+                filesInput.files = dataTransfer.files;
+            } else {
+                // 单文件模式：只取第一个文件
+                if (droppedFiles.length > 1) {
+                    alert('单文件模式下只能拖放一个文件');
+                    return;
+                }
+                selectedFiles = [droppedFiles[0]];
+                
+                // 设置单文件输入
+                const fileInput = document.getElementById('file');
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(droppedFiles[0]);
+                fileInput.files = dataTransfer.files;
+            }
 
             // 显示文件预览
-            showFilePreview(file);
+            showFilesPreview();
         }
 
-        function showFilePreview(file) {
+        function showFilesPreview() {
             const preview = document.getElementById('file-preview');
             preview.innerHTML = '';
+            
+            if (selectedFiles.length === 0) {
+                preview.style.display = 'none';
+                return;
+            }
+
             preview.style.display = 'block';
 
+            if (isMultiFileMode) {
+                showMultipleFilesPreview();
+            } else {
+                showSingleFilePreview(selectedFiles[0]);
+            }
+        }
+
+        function showSingleFilePreview(file) {
+            const preview = document.getElementById('file-preview');
             const card = document.createElement('div');
             card.className = 'card';
 
@@ -263,13 +372,122 @@
             removeBtn.className = 'btn btn-sm btn-outline-danger';
             removeBtn.innerHTML = '<i class="bi bi-x-circle me-1"></i>移除';
             removeBtn.onclick = function() {
-                document.getElementById('file').value = '';
-                preview.style.display = 'none';
+                clearSelectedFiles();
             };
 
             cardBody.appendChild(removeBtn);
             card.appendChild(cardBody);
             preview.appendChild(card);
+        }
+
+        function showMultipleFilesPreview() {
+            const preview = document.getElementById('file-preview');
+            
+            // 创建统计信息卡片
+            const statsCard = document.createElement('div');
+            statsCard.className = 'card mb-3';
+            statsCard.innerHTML = `
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-1">
+                                <i class="bi bi-files me-2"></i>已选择 ${selectedFiles.length} 个文件
+                            </h5>
+                            <p class="card-text text-muted mb-0">
+                                总大小: ${formatFileSize(selectedFiles.reduce((total, file) => total + file.size, 0))}
+                            </p>
+                        </div>
+                        <button type="button" class="btn btn-outline-danger" onclick="clearSelectedFiles()">
+                            <i class="bi bi-trash me-1"></i>清空
+                        </button>
+                    </div>
+                </div>
+            `;
+            preview.appendChild(statsCard);
+
+            // 创建文件列表
+            const fileList = document.createElement('div');
+            fileList.className = 'row';
+
+            selectedFiles.forEach((file, index) => {
+                const col = document.createElement('div');
+                col.className = 'col-md-6 col-lg-4 mb-3';
+
+                const fileCard = document.createElement('div');
+                fileCard.className = 'card h-100';
+
+                const cardBody = document.createElement('div');
+                cardBody.className = 'card-body p-3';
+
+                // 文件图标
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'text-center mb-2';
+                
+                if (file.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.className = 'img-thumbnail';
+                    img.style.maxHeight = '60px';
+                    img.style.maxWidth = '60px';
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                    
+                    iconDiv.appendChild(img);
+                } else {
+                    const icon = document.createElement('i');
+                    icon.className = getFileIcon(file.type);
+                    icon.style.fontSize = '2.5rem';
+                    iconDiv.appendChild(icon);
+                }
+
+                // 文件信息
+                const fileName = document.createElement('h6');
+                fileName.className = 'card-title mb-1 text-truncate';
+                fileName.title = file.name;
+                fileName.textContent = file.name;
+
+                const fileSize = document.createElement('small');
+                fileSize.className = 'text-muted';
+                fileSize.textContent = formatFileSize(file.size);
+
+                // 移除单个文件按钮
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'btn btn-sm btn-outline-danger mt-2 w-100';
+                removeBtn.innerHTML = '<i class="bi bi-x me-1"></i>移除';
+                removeBtn.onclick = function() {
+                    removeFileFromSelection(index);
+                };
+
+                cardBody.appendChild(iconDiv);
+                cardBody.appendChild(fileName);
+                cardBody.appendChild(fileSize);
+                cardBody.appendChild(removeBtn);
+                fileCard.appendChild(cardBody);
+                col.appendChild(fileCard);
+                fileList.appendChild(col);
+            });
+
+            preview.appendChild(fileList);
+        }
+
+        function removeFileFromSelection(index) {
+            selectedFiles.splice(index, 1);
+            
+            if (selectedFiles.length === 0) {
+                clearSelectedFiles();
+            } else {
+                // 更新文件输入
+                const filesInput = document.getElementById('files');
+                const dataTransfer = new DataTransfer();
+                selectedFiles.forEach(file => dataTransfer.items.add(file));
+                filesInput.files = dataTransfer.files;
+                
+                showFilesPreview();
+            }
         }
 
         function getFileIcon(fileType) {
@@ -310,13 +528,42 @@
 
         // 表单提交前验证
         document.getElementById('uploadForm').addEventListener('submit', function(e) {
-            const fileInput = document.getElementById('file');
-            if (!fileInput.files || fileInput.files.length === 0) {
-                e.preventDefault();
+            e.preventDefault(); // 阻止默认提交
+            
+            if (selectedFiles.length === 0) {
                 alert('请选择要上传的文件');
                 return false;
             }
-            return true;
+
+            // 验证文件数量
+            if (isMultiFileMode && selectedFiles.length > 20) {
+                alert('最多只能上传20个文件');
+                return false;
+            }
+
+            // 验证总文件大小（限制为2GB）
+            const totalSize = selectedFiles.reduce((total, file) => total + file.size, 0);
+            const maxTotalSize = 2 * 1024 * 1024 * 1024; // 2GB
+            if (totalSize > maxTotalSize) {
+                alert('文件总大小不能超过2GB');
+                return false;
+            }
+
+            // 禁用提交按钮
+            const submitBtn = document.getElementById('submitBtn');
+            const originalBtnContent = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            
+            if (isMultiFileMode) {
+                submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>正在上传多个文件...';
+            } else {
+                submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>正在上传...';
+            }
+
+            // 提交表单
+            this.submit();
         });
+
+
     </script>
 }

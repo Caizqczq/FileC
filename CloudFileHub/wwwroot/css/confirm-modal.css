@@ -1,0 +1,205 @@
+/* 自定义确认模态框样式 */
+.modal-content {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+}
+
+.confirm-icon-container {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* 不同类型模态框的主题样式 */
+.modal-danger .modal-header {
+    background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+}
+
+.modal-danger .confirm-icon-container {
+    background: rgba(254, 215, 215, 0.8);
+}
+
+.modal-warning .modal-header {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+}
+
+.modal-warning .confirm-icon-container {
+    background: rgba(254, 243, 199, 0.8);
+}
+
+.modal-info .modal-header {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+}
+
+.modal-info .confirm-icon-container {
+    background: rgba(219, 234, 254, 0.8);
+}
+
+.modal-success .modal-header {
+    background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+}
+
+.modal-success .confirm-icon-container {
+    background: rgba(198, 246, 213, 0.8);
+}
+
+/* 按钮动画效果 */
+.modal-footer .btn {
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 10px 20px;
+}
+
+.modal-footer .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.modal-footer .btn-danger:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+}
+
+.modal-footer .btn-outline-secondary:hover {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+    box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4);
+}
+
+/* 模态框出现动画 */
+.modal.fade .modal-dialog {
+    transition: transform 0.4s ease-out;
+    transform: translate(0, -50px) scale(0.95);
+}
+
+.modal.show .modal-dialog {
+    transform: translate(0, 0) scale(1);
+}
+
+/* 图标动画 */
+.confirm-icon-container i {
+    transition: all 0.3s ease;
+}
+
+.modal.show .confirm-icon-container i {
+    animation: iconPulse 0.6s ease-out;
+}
+
+@keyframes iconPulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* 响应式设计 */
+@media (max-width: 576px) {
+    .modal-dialog {
+        margin: 10px;
+    }
+    
+    .confirm-icon-container {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .confirm-icon-container i {
+        font-size: 1.5rem !important;
+    }
+    
+    .modal-footer .btn {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+    }
+}
+
+/* 加载状态动画 */
+.btn-loading {
+    position: relative;
+    color: transparent !important;
+}
+
+.btn-loading::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    color: white;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 文本动画效果 */
+.modal-title {
+    animation: slideInDown 0.5s ease-out;
+}
+
+.modal-body {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.modal-footer {
+    animation: fadeInUp 0.7s ease-out;
+}
+
+@keyframes slideInDown {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* 阴影效果增强 */
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(3px);
+} 

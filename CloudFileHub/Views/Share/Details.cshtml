@@ -129,7 +129,7 @@
                         <a asp-action="Index" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left me-2"></i>返回分享列表
                         </a>
-                        <form asp-action="Delete" asp-route-id="@Model.Id" method="post" data-confirm="确定要删除此分享链接吗？">
+                        <form asp-action="Delete" asp-route-id="@Model.Id" method="post" data-confirm-share="@Model.File.FileName">
                             <button type="submit" class="btn btn-danger">
                                 <i class="bi bi-trash me-2"></i>删除分享
                             </button>
@@ -162,7 +162,7 @@
                     <div class="text-center mb-4">
                         @if (Model.File.ContentType.StartsWith("image/"))
                         {
-                            <img src="/@Model.File.FilePath" class="img-thumbnail mb-3" style="max-height: 150px;" alt="@Model.File.FileName" />
+                            <img src="@Url.Action("Preview", "File", new { id = Model.File.Id })" class="img-thumbnail mb-3" style="max-height: 150px;" alt="@Model.File.FileName" />
                         }
                         else if (Model.File.ContentType.Contains("pdf"))
                         {
@@ -291,6 +291,22 @@
                 showToast('二维码下载已开始', 'success');
             });
             
+            // 确认删除分享
+            document.addEventListener('submit', function(e) {
+                const form = e.target;
+                if (form.hasAttribute('data-confirm-share')) {
+                    e.preventDefault();
+                    
+                    const fileName = form.getAttribute('data-confirm-share');
+                    confirmShareDelete(fileName).then((confirmed) => {
+                        if (confirmed) {
+                            form.removeAttribute('data-confirm-share');
+                            form.submit();
+                        }
+                    });
+                }
+            });
+
             // 显示提示消息
             function showToast(message, type = 'info') {
                 const toast = `

@@ -37,6 +37,19 @@ public class FileService
             .ToListAsync();
     }
 
+    /// <summary>
+    /// 获取用户的所有文件（包括所有子目录中的文件）
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <returns>用户的所有文件列表</returns>
+    public async Task<List<FileModel>> GetAllUserFilesAsync(string userId)
+    {
+        return await _context.Files
+            .Where(f => f.UserId == userId)
+            .OrderByDescending(f => f.UploadDate)
+            .ToListAsync();
+    }
+
     public async Task<List<DirectoryModel>> GetUserDirectoriesAsync(string userId, int? parentDirectoryId = null)
     {
         return await _context.Directories
@@ -59,73 +72,99 @@ public class FileService
 
     public async Task<FileModel> UploadFileAsync(IFormFile file, string userId, int? directoryId = null, string? description = null)
     {
-        // 检查同一目录下是否已存在同名文件
-        string originalFileName = Path.GetFileName(file.FileName);
-        string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(originalFileName);
-        string extension = Path.GetExtension(originalFileName);
-        string finalFileName = originalFileName;
-
-        // 查询数据库中是否存在同名文件
-        bool fileExists = await _context.Files
-            .AnyAsync(f => f.UserId == userId && f.DirectoryId == directoryId && f.FileName == originalFileName);
-
-        // 如果存在同名文件，添加计数后缀
-        if (fileExists)
+        try
         {
-            int counter = 1;
-            string newFileName;
-
-            do
+            // 基本验证
+            if (file == null || file.Length == 0)
             {
-                newFileName = $"{fileNameWithoutExtension} ({counter}){extension}";
-                counter++;
-                fileExists = await _context.Files
-                    .AnyAsync(f => f.UserId == userId && f.DirectoryId == directoryId && f.FileName == newFileName);
-            } while (fileExists);
-
-            finalFileName = newFileName;
-        }
-
-        // Generate unique filename for OSS storage (生成OSS存储的唯一键名)
-        var uniqueFileName = $"{userId}/{Guid.NewGuid()}_{finalFileName}";
-
-        // Upload file to OSS
-        using (var stream = file.OpenReadStream())
-        {
-            var uploadSuccess = await _ossService.UploadFileAsync(uniqueFileName, stream);
-            if (!uploadSuccess)
-            {
-                throw new Exception("文件上传到OSS失败");
+                throw new ArgumentException("文件不能为空");
             }
-        }
 
-        // Create file record in database
-        var fileModel = new FileModel
-        {
-            FileName = finalFileName, // 使用可能已修改的文件名
-            ContentType = file.ContentType,
-            FileSize = file.Length,
-            FilePath = uniqueFileName, // 存储OSS的键名
-            Description = description,
-            UserId = userId,
-            DirectoryId = directoryId
-        };
+            if (string.IsNullOrWhiteSpace(file.FileName))
+            {
+                throw new ArgumentException("文件名不能为空");
+            }
 
-        _context.Files.Add(fileModel);
-        await _context.SaveChangesAsync();
+            // 检查文件扩展名
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (string.IsNullOrEmpty(extension))
+            {
+                throw new ArgumentException("文件必须有扩展名");
+            }
 
-        // Update user storage usage
-        var user = await _context.Users.FindAsync(userId);
-        if (user != null)
-        {
-            user.StorageUsed += file.Length;
+            _logger.LogInformation("开始上传文件: {FileName}, 大小: {Size}, 类型: {ContentType}", 
+                file.FileName, file.Length, file.ContentType);
+
+            // 检查同一目录下是否已存在同名文件
+            string originalFileName = Path.GetFileName(file.FileName);
+            string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(originalFileName);
+            string finalFileName = originalFileName;
+
+            // 查询数据库中是否存在同名文件
+            bool fileExists = await _context.Files
+                .AnyAsync(f => f.UserId == userId && f.DirectoryId == directoryId && f.FileName == originalFileName);
+
+            // 如果存在同名文件，添加计数后缀
+            if (fileExists)
+            {
+                int counter = 1;
+                string newFileName;
+
+                do
+                {
+                    newFileName = $"{fileNameWithoutExtension} ({counter}){extension}";
+                    counter++;
+                    fileExists = await _context.Files
+                        .AnyAsync(f => f.UserId == userId && f.DirectoryId == directoryId && f.FileName == newFileName);
+                } while (fileExists);
+
+                finalFileName = newFileName;
+            }
+
+            // Generate unique filename for OSS storage (生成OSS存储的唯一键名)
+            var uniqueFileName = $"{userId}/{Guid.NewGuid()}_{finalFileName}";
+
+            // Upload file to OSS
+            using (var stream = file.OpenReadStream())
+            {
+                var uploadSuccess = await _ossService.UploadFileAsync(uniqueFileName, stream);
+                if (!uploadSuccess)
+                {
+                    throw new Exception("文件上传到OSS失败");
+                }
+            }
+
+            // Create file record in database
+            var fileModel = new FileModel
+            {
+                FileName = finalFileName, // 使用可能已修改的文件名
+                ContentType = file.ContentType,
+                FileSize = file.Length,
+                FilePath = uniqueFileName, // 存储OSS的键名
+                Description = description,
+                UserId = userId,
+                DirectoryId = directoryId
+            };
+
+            _context.Files.Add(fileModel);
             await _context.SaveChangesAsync();
+
+            // Update user storage usage
+            var user = await _context.Users.FindAsync(userId);
+            if (user != null)
+            {
+                user.StorageUsed += file.Length;
+                await _context.SaveChangesAsync();
+            }
+
+            _logger.LogInformation("文件上传成功: {FileName}, 数据库ID: {FileId}", finalFileName, fileModel.Id);
+            return fileModel;
         }
-
-        // 异步进行AI分析（不阻塞文件上传）
-        _ = Task.Run(async () => await AnalyzeFileWithAiAsync(fileModel.Id));
-
-        return fileModel;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "文件上传失败: {FileName}, 用户ID: {UserId}", file?.FileName, userId);
+            throw;
+        }
     }
 
     public async Task<bool> DeleteFileAsync(int fileId, string userId)
@@ -462,6 +501,8 @@ public class FileService
             .OrderByDescending(f => f.UploadDate)
             .ToListAsync();
     }
+
+
 
     /// <summary>
     /// 对文件进行AI分析

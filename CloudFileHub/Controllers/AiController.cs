@@ -149,7 +149,7 @@ public class AiController : ControllerBase
 
         try
         {
-            var files = await _fileService.GetUserFilesAsync(userId);
+            var files = await _fileService.GetAllUserFilesAsync(userId);
             var categories = files
                 .Where(f => !string.IsNullOrEmpty(f.AiCategory))
                 .GroupBy(f => f.AiCategory)
@@ -180,7 +180,7 @@ public class AiController : ControllerBase
 
         try
         {
-            var files = await _fileService.GetUserFilesAsync(userId);
+            var files = await _fileService.GetAllUserFilesAsync(userId);
             var allTags = new List<string>();
             
             foreach (var file in files.Where(f => !string.IsNullOrEmpty(f.AiTags)))
@@ -221,7 +221,7 @@ public class AiController : ControllerBase
 
         try
         {
-            var files = await _fileService.GetUserFilesAsync(userId);
+            var files = await _fileService.GetAllUserFilesAsync(userId);
             
             var totalFiles = files.Count;
             var analyzedFiles = files.Count(f => !string.IsNullOrEmpty(f.AiSummary) || !string.IsNullOrEmpty(f.AiCategory));
@@ -272,7 +272,7 @@ public class AiController : ControllerBase
         try
         {
             // 验证文件所有权
-            var userFiles = await _fileService.GetUserFilesAsync(userId);
+            var userFiles = await _fileService.GetAllUserFilesAsync(userId);
             var validFileIds = fileIds.Where(id => userFiles.Any(f => f.Id == id)).ToList();
 
             if (!validFileIds.Any())
